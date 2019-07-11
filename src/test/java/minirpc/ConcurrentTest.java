@@ -1,5 +1,6 @@
 package minirpc;
 
+import minirpc.utils.struct.ConcurrentLRUCache;
 import minirpc.utils.struct.ConcurrentTreeSet;
 import org.junit.Test;
 
@@ -9,6 +10,18 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class ConcurrentTest {
+
+    @Test
+    public void testLRU(){
+        ConcurrentLRUCache<String,Integer> cache = new ConcurrentLRUCache<>(4);
+        cache.put("1",1);
+        cache.put("2",2);
+        cache.put("3",3);
+        cache.put("4",4);
+        System.out.println(cache.size());
+        cache.put("5",5);
+        System.out.println(cache.size());
+    }
 
     @Test
     public void testConcurrentSet(){

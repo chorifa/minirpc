@@ -6,6 +6,8 @@ import java.util.Arrays;
 public class RemotingRequest implements Serializable {
     private static final long serialVersionUID = 201907041533L;
 
+    private String targetAddr;
+
     private String requestId;
 
     private String methodName;
@@ -20,6 +22,14 @@ public class RemotingRequest implements Serializable {
 
 
     // -------------------------- get and set --------------------------
+
+    public String getTargetAddr() {
+        return targetAddr;
+    }
+
+    public void setTargetAddr(String targetAddr) {
+        this.targetAddr = targetAddr;
+    }
 
     public String getRequestId() {
         return requestId;

@@ -1,5 +1,6 @@
 package minirpc.utils.struct;
 
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.TreeSet;
 import java.util.concurrent.locks.StampedLock;
@@ -54,13 +55,27 @@ public class ConcurrentTreeSet<E> {
         }
     }
 
-    public int size(){
-        long stamp = readWriteLock.readLock();
-        try{
-            return innerSet.size();
+    public void reset(Collection<E> refer){
+        long stamp = readWriteLock.writeLock();
+        try {
+            innerSet = new TreeSet<>(refer);
         }finally {
-            readWriteLock.unlockRead(stamp);
+            readWriteLock.unlockWrite(stamp);
         }
+    }
+
+    public int size(){
+        long stamp = readWriteLock.tryOptimisticRead();
+        int finalSize = innerSet.size();
+        if(!readWriteLock.validate(stamp)) {
+            stamp = readWriteLock.readLock();
+            try {
+                finalSize = innerSet.size();
+            } finally {
+                readWriteLock.unlockRead(stamp);
+            }
+        }
+        return finalSize;
     }
 
     public boolean isEmpty(){

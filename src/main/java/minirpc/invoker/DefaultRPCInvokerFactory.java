@@ -1,5 +1,6 @@
 package minirpc.invoker;
 
+import minirpc.invoker.statistics.StatusStatistics;
 import minirpc.invoker.type.InvokeCallBack;
 import minirpc.register.RegisterConfig;
 import minirpc.register.RegisterService;
@@ -95,6 +96,12 @@ public class DefaultRPCInvokerFactory {
         if(futureResponse == null)
             throw new RPCException("InvokerFactory: futureResponseMap do not have such futureResponse: id = "+id);
         InvokeCallBack callBack = futureResponse.getCallBack();
+
+        // statistics
+        if(response.getErrorMsg() == null) // success
+            StatusStatistics.endCount(futureResponse.getRequest().getTargetAddr(),futureResponse.getRequest().getMethodName(),true);
+        else // fail
+            StatusStatistics.endCount(futureResponse.getRequest().getTargetAddr(),futureResponse.getRequest().getMethodName(),false);
 
         if(callBack != null){ // callBack
             executeTask(()-> {

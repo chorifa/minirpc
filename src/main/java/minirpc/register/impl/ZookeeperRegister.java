@@ -258,7 +258,7 @@ public class ZookeeperRegister implements RegisterService {
             List<String> hosts = client.getChildren().forPath(nodePath);
             if(hosts != null && !hosts.isEmpty()){
                 final ConcurrentTreeSet<String> oldHosts = serviceMap.get(key);
-                hosts.forEach(oldHosts::addIfAbsent);
+                oldHosts.reset(hosts);
             }
         }catch (Exception e){
             logger.error("ZKRegister: inquire nodePath={} for refresh encounter one exception...",nodePath);

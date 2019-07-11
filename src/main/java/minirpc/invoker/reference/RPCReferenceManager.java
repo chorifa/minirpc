@@ -1,6 +1,7 @@
 package minirpc.invoker.reference;
 
 import minirpc.invoker.DefaultRPCInvokerFactory;
+import minirpc.invoker.statistics.StatusStatistics;
 import minirpc.invoker.type.FutureType;
 import minirpc.invoker.type.InvokeCallBack;
 import minirpc.invoker.type.SendType;
@@ -145,6 +146,7 @@ public class RPCReferenceManager {
 
                     // create request
                     RemotingRequest request = new RemotingRequest();
+                    request.setTargetAddr(finalAddress);
                     request.setArgs(args);
                     request.setInterfaceName(interfaceName);
                     request.setMethodName(methodName);
@@ -158,19 +160,28 @@ public class RPCReferenceManager {
                         case SYNC: {
                             RemotingFutureResponse futureResponse = new RemotingFutureResponse(request);
                             invokerFactory.putFutureResponse(request.getRequestId(), futureResponse);
+                            RemotingResponse response = null;
                             try {
+
+                                // statistics
+                                StatusStatistics.startCount(finalAddress,methodName);
+
                                 client.asyncSend(finalAddress, request);
                                 // wait until get
-                                RemotingResponse response = futureResponse.get(10, TimeUnit.SECONDS);
-                                if (response.getErrorMsg() != null)
-                                    throw new RPCException(response.getErrorMsg());
-                                return response.getResult();
+                                response = futureResponse.get(10, TimeUnit.SECONDS);
+
                             } catch (Exception e) {
                                 logger.info("Invoker: encounter one exception via SYNC on: {}", finalAddress,e);
+                                // statistics
+                                StatusStatistics.endCount(finalAddress,methodName,false);
+
                                 throw (e instanceof RPCException) ? e : new RPCException(e);
                             } finally {
                                 invokerFactory.removeFutureResponse(request.getRequestId());
                             }
+                            if (response.getErrorMsg() != null)
+                                throw new RPCException(response.getErrorMsg());
+                            return response.getResult();
                         }
                         case FUTURE: {
                             RemotingFutureResponse futureResponse = new RemotingFutureResponse(request);
@@ -178,10 +189,16 @@ public class RPCReferenceManager {
                             FutureType<?> futureType = FutureType.generateFuture(returnType,futureResponse,invokerFactory);
                             try {
                                 FutureType.setFuture(futureType);
+                                //statistics
+                                StatusStatistics.startCount(finalAddress,methodName);
+
                                 client.asyncSend(finalAddress, request);
                                 return null;
                             } catch (Exception e) {
                                 invokerFactory.removeFutureResponse(request.getRequestId());
+                                // statistics
+                                StatusStatistics.endCount(finalAddress,methodName,false);
+
                                 logger.error("Invoker: encounter one exception via FUTURE on: {}", finalAddress);
                                 throw (e instanceof RPCException) ? e : new RPCException(e);
                             }
@@ -193,10 +210,16 @@ public class RPCReferenceManager {
                             futureResponse.setCallBack(callBack);
                             invokerFactory.putFutureResponse(request.getRequestId(), futureResponse);
                             try{
+                                //statistics
+                                StatusStatistics.startCount(finalAddress,methodName);
+
                                 client.asyncSend(finalAddress,request);
                                 return null;
                             }catch (Exception e){
                                 invokerFactory.removeFutureResponse(request.getRequestId());
+                                // statistics
+                                StatusStatistics.endCount(finalAddress,methodName,false);
+
                                 logger.error("Invoker: encounter one exception via CallBack on: {}", finalAddress);
                                 throw (e instanceof RPCException) ? e : new RPCException(e);
                             }
