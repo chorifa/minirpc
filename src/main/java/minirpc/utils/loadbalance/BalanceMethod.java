@@ -4,6 +4,6 @@ import java.util.List;
 
 public interface BalanceMethod {
 
-    String select(String serviceKey, List<String> providers, SelectOptions ops);
+    String select(String serviceKey,final List<String> providers, final SelectOptions ops);
 
 }

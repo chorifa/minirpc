@@ -12,6 +12,7 @@ import minirpc.remoting.entity.RemotingFutureResponse;
 import minirpc.remoting.entity.RemotingRequest;
 import minirpc.remoting.entity.RemotingResponse;
 import minirpc.utils.RPCException;
+import minirpc.utils.loadbalance.SelectOptions;
 import minirpc.utils.serialize.SerialType;
 import minirpc.utils.serialize.Serializer;
 import org.slf4j.Logger;
@@ -20,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.List;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -135,9 +137,10 @@ public class RPCReferenceManager {
                     if(finalAddress == null){
                         RegisterService register = this.invokerFactory.getRegister();
                         if(register != null && register.isAvailable()){
-                            TreeSet<String> hosts = register.discovery(generateKey(this.interfaceClass.getName(),this.version));
-                            if(hosts != null && !hosts.isEmpty())
-                                finalAddress = hosts.first();
+                            String serviceKey = generateKey(this.interfaceClass.getName(),this.version);
+                            List<String> hosts = register.discovery(serviceKey);
+                            if(hosts != null && !hosts.isEmpty()) // do balance
+                                finalAddress = this.invokerFactory.getBalanceMethod().select(serviceKey,hosts,new SelectOptions(methodName,args));
                         }
                         if(finalAddress == null)
                             throw new RPCException("Invoker: cannot resolve the host address...");

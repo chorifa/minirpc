@@ -54,7 +54,7 @@ public class ConsistentHashMethod implements BalanceMethod {
             }
         }
 
-        String doSelect(Object[] args){
+        String doSelect(final Object[] args){
             String key = toKey(args);
             byte[] digest = md5(key);
             return selectForKey(hash(digest,0));
@@ -68,7 +68,7 @@ public class ConsistentHashMethod implements BalanceMethod {
             return entry.getValue();
         }
 
-        private String toKey(Object[] args){
+        private String toKey(final Object[] args){
             StringBuilder sb = new StringBuilder();
             for(int i : ARGUMENT_INDEX)
                 if(i>=0 && i<args.length)

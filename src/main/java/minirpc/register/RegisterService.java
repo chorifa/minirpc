@@ -1,6 +1,6 @@
 package minirpc.register;
 
-import java.util.TreeSet;
+import java.util.List;
 
 public interface RegisterService {
 
@@ -18,6 +18,6 @@ public interface RegisterService {
 
     void unsubscribe(String key);
 
-    TreeSet<String> discovery(String key);
+    List<String> discovery(String key);
 
 }

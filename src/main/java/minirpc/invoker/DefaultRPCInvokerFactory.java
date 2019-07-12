@@ -9,6 +9,8 @@ import minirpc.remoting.entity.RemotingFutureResponse;
 import minirpc.remoting.entity.RemotingResponse;
 import minirpc.utils.InnerCallBack;
 import minirpc.utils.RPCException;
+import minirpc.utils.loadbalance.BalanceMethod;
+import minirpc.utils.loadbalance.LoadBalance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,6 +25,7 @@ public class DefaultRPCInvokerFactory {
 
     private RegisterService register;
     private RegisterConfig config;
+    private BalanceMethod balanceMethod;
 
     private final static DefaultRPCInvokerFactory DEFAULT_INSTANCE = new DefaultRPCInvokerFactory();
     public static DefaultRPCInvokerFactory getInstance(){
@@ -31,7 +34,21 @@ public class DefaultRPCInvokerFactory {
 
     public DefaultRPCInvokerFactory(){}
 
-    public DefaultRPCInvokerFactory(@Nonnull RegisterType registerType, @Nonnull RegisterConfig config){
+    public DefaultRPCInvokerFactory(RegisterType registerType, RegisterConfig config){
+        this(registerType,config,LoadBalance.LEAST_UNREPLIED);
+    }
+
+    public DefaultRPCInvokerFactory(RegisterType registerType, RegisterConfig config, LoadBalance loadBalance){
+
+        if(registerType == null || registerType.getRegisterClass() == null)
+            throw new RPCException("InvokerFactory: register type cannot be null...");
+
+        if(config == null)
+            throw new RPCException("InvokerFactory: register config cannot be null...");
+
+        if(loadBalance == null || loadBalance.getBalanceMethod() == null)
+            throw new RPCException("InvokerFactory: loadBalance cannot be null...");
+
         try {
             register = registerType.getRegisterClass().getDeclaredConstructor().newInstance();
         }catch (Exception e){
@@ -44,12 +61,17 @@ public class DefaultRPCInvokerFactory {
             }
         }
         this.config = config;
+        this.balanceMethod = loadBalance.getBalanceMethod();
 
         // TODO now --->>> void start()
     }
 
     public RegisterService getRegister() {
         return register;
+    }
+
+    public BalanceMethod getBalanceMethod() {
+        return balanceMethod;
     }
 
     // --------------------------- start && stop ---------------------------

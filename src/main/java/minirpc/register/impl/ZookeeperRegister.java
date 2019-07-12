@@ -3,7 +3,6 @@ package minirpc.register.impl;
 import minirpc.register.RegisterConfig;
 import minirpc.register.RegisterService;
 import minirpc.utils.RPCException;
-import minirpc.utils.struct.ConcurrentTreeSet;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
@@ -33,7 +32,7 @@ public class ZookeeperRegister implements RegisterService {
 
     private Map<String/*service name*/, String/*host address*/> registerMap = new HashMap<>();
     private final Map<String/* service name */, PathChildrenCache> childCacheMap = new ConcurrentHashMap<>();
-    private final Map<String /*service name*/, ConcurrentTreeSet<String> /*host addresss*/> serviceMap = new ConcurrentHashMap<>();
+    private final Map<String /*service name*/, Set<String> /*host addresss*/> serviceMap = new ConcurrentHashMap<>();
 
     private volatile ExecutorService executor = null;
 
@@ -138,8 +137,8 @@ public class ZookeeperRegister implements RegisterService {
         PathChildrenCache childCache = childCacheMap.get(key);
         if(childCache == null){
             childCache = new PathChildrenCache(this.client,nodePath,false);
-            // create TreeSet for each childCache
-            serviceMap.putIfAbsent(key,new ConcurrentTreeSet<>());
+            // create ConcurrentSet for each childCache
+            serviceMap.putIfAbsent(key, Collections.newSetFromMap(new ConcurrentHashMap<>()));
 
             if(this.executor == null) {
                 synchronized (this) {
@@ -154,29 +153,28 @@ public class ZookeeperRegister implements RegisterService {
                     String modPath = event.getData().getPath();
                     String[] tmp = modPath.split("/");
                     String modHost = tmp[tmp.length - 1];
-                    ConcurrentTreeSet<String> hostSet = ZookeeperRegister.this.serviceMap.get(key); // ensure not null
+                    Set<String> hostSet = ZookeeperRegister.this.serviceMap.get(key); // ensure not null
                     if (hostSet == null) {
                         logger.error("ZKRegister: childCacheMap contains {}. But serviceMap do not. Which should not occur.", key);
-                        ConcurrentTreeSet<String> newSet = new ConcurrentTreeSet<>();
+                        Set<String> newSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
                         hostSet = serviceMap.putIfAbsent(key, newSet);
                         if (hostSet == null)
                             hostSet = newSet;
-
                     }
                     switch (event.getType()) {
                         case CHILD_ADDED:
                             logger.info("ZKRegister: add child node: { path = " + modPath +/*", data = "+new String(event.getData().getData())+*/" }");
-                            if (!hostSet.addIfAbsent(modHost))
+                            if (!hostSet.add(modHost))
                                 logger.debug("ZKRegister: child node add. But local map already contains. ");
                             break;
                         case CHILD_UPDATED:
                             logger.info("ZKRegister: update child node: { path = " + modPath +/*", new data = "+new String(event.getData().getData())+*/" }");
-                            if (hostSet.addIfAbsent(modHost))
+                            if (hostSet.add(modHost))
                                 logger.debug("ZKRegister: child node update. But local map do not contain. ");
                             break;
                         case CHILD_REMOVED:
                             logger.info("ZKRegister: remove child node: { path = " + modPath +/*", raw data = "+new String(event.getData().getData())+*/" }");
-                            if (!hostSet.removeIfContain(modHost))
+                            if (!hostSet.remove(modHost))
                                 logger.debug("ZKRegister: child node remove. But local map do not contain. ");
                             break;
                         default:
@@ -228,16 +226,24 @@ public class ZookeeperRegister implements RegisterService {
      * @return
      */
     @Override
-    public TreeSet<String> discovery(String key) {
-        ConcurrentTreeSet<String> hosts = serviceMap.get(key);
-        if(hosts == null || hosts.isEmpty())
+    public List<String> discovery(String key) {
+        Set<String> hosts = serviceMap.get(key);
+        if(hosts == null)
+            throw new RPCException("ZKRegister: invoker have not yet subscribe such service >>> name = "+key);
+        /*
+        if(hosts.isEmpty())
             inquireRefresh(key);
             //waitForRefresh();
 
         hosts = serviceMap.get(key);
         if(hosts != null)
-            return hosts.cloneSet();
+            return new ArrayList<>(hosts);
         else return null;
+         */
+        if(!hosts.isEmpty())
+            return new ArrayList<>(hosts);
+        else
+            return inquire(key);
     }
 
     private void waitForRefresh() {
@@ -245,6 +251,20 @@ public class ZookeeperRegister implements RegisterService {
             TimeUnit.SECONDS.sleep(1);
         } catch (InterruptedException e) {
             logger.error("ZKRegister: sleep encounter interrupt...",e);
+        }
+    }
+
+    private List<String> inquire(String key){
+        String nodePath = "/".concat(key);
+        if(checkNodeExists(nodePath) == null){
+            logger.error("ZKRegister: nodePath={} not exists...",nodePath);
+            throw new RPCException("ZKRegister: nodePath not exists...");
+        }
+        try{
+            return client.getChildren().forPath(nodePath);
+        }catch (Exception e){
+            logger.error("ZKRegister: inquire nodePath={} for refresh encounter one exception...",nodePath);
+            return null;
         }
     }
 
@@ -257,8 +277,9 @@ public class ZookeeperRegister implements RegisterService {
         try {
             List<String> hosts = client.getChildren().forPath(nodePath);
             if(hosts != null && !hosts.isEmpty()){
-                final ConcurrentTreeSet<String> oldHosts = serviceMap.get(key);
-                oldHosts.reset(hosts);
+                final Set<String> oldHosts = serviceMap.get(key);
+                oldHosts.retainAll(hosts); // not atomic
+                oldHosts.addAll(hosts);
             }
         }catch (Exception e){
             logger.error("ZKRegister: inquire nodePath={} for refresh encounter one exception...",nodePath);

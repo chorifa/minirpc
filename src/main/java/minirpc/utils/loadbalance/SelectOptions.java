@@ -6,6 +6,13 @@ public class SelectOptions {
 
     private Object[] args;
 
+    public SelectOptions(){}
+
+    public SelectOptions(String methodName, Object[] args){
+        this.methodName = methodName;
+        this.args = args;
+    }
+
     public String getMethodName() {
         return methodName;
     }

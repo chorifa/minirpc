@@ -1,24 +1,28 @@
 package minirpc.utils.struct;
 
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedList;
 import java.util.concurrent.locks.StampedLock;
 
-public class ConcurrentLinkedList<E> implements ConcurrentList<E>{
+public class ConcurrentArrayList<E> implements ConcurrentList<E>{
 
-    private LinkedList<E> innerList;
+    private ArrayList<E> innerList;
     private final StampedLock readWriteLock = new StampedLock();
 
     /**
      * unsafe. watch out
      * @return
      */
-    public LinkedList<E> getInnerList(){
+    public ArrayList<E> getInnerList(){
         return innerList;
     }
 
-    public ConcurrentLinkedList(){
-        this.innerList = new LinkedList<>();
+    public ConcurrentArrayList(){
+        this.innerList = new ArrayList<>();
+    }
+
+    public ConcurrentArrayList(int capacity){
+        this.innerList = new ArrayList<>(capacity);
     }
 
     @Override
@@ -65,56 +69,10 @@ public class ConcurrentLinkedList<E> implements ConcurrentList<E>{
     public void add(int index, E e){
         long stamp = readWriteLock.writeLock();
         try {
-            innerList.add(index, e);
+            innerList.add(index,e);
         }finally {
             readWriteLock.unlockWrite(stamp);
         }
-    }
-
-    /**
-     * add at tail
-     * @param e
-     * @return
-     */
-    public boolean offer(E e){
-        long stamp = readWriteLock.writeLock();
-        try {
-            return innerList.offer(e);
-        }finally {
-            readWriteLock.unlockWrite(stamp);
-        }
-    }
-
-    public boolean offerFirst(E e){
-        long stamp = readWriteLock.writeLock();
-        try {
-            return innerList.offerFirst(e);
-        }finally {
-            readWriteLock.unlockWrite(stamp);
-        }
-    }
-
-    public E poll(){
-        long stamp = readWriteLock.writeLock();
-        try {
-            return innerList.poll();
-        }finally {
-            readWriteLock.unlockWrite(stamp);
-        }
-    }
-
-    public E peek(){
-        long stamp = readWriteLock.tryOptimisticRead();
-        E head = innerList.peek();
-        if(!readWriteLock.validate(stamp)) {
-            stamp = readWriteLock.readLock();
-            try {
-                head = innerList.peek();
-            } finally {
-                readWriteLock.unlockRead(stamp);
-            }
-        }
-        return head;
     }
 
     @Override
@@ -140,20 +98,6 @@ public class ConcurrentLinkedList<E> implements ConcurrentList<E>{
             }
         }
         return finalSize;
-    }
-
-    // ------------------------------- for LRU -------------------------------
-    // head is LR element
-
-    public boolean rectify(E e){
-        long stamp = readWriteLock.writeLock();
-        try{
-            if(innerList.remove(e))
-                return innerList.offer(e);
-            else return false;
-        }finally {
-            readWriteLock.unlockWrite(stamp);
-        }
     }
 
 }

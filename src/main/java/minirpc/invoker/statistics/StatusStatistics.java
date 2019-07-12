@@ -82,4 +82,9 @@ public class StatusStatistics {
         }
     }
 
+    // --------------------------------
+    public int getUnreplied(){
+        return unreplied.get();
+    }
+
 }
