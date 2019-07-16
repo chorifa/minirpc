@@ -20,4 +20,6 @@ public interface RegisterService {
 
     List<String> discovery(String key);
 
+    List<String> inquireRefresh(String key);
+
 }

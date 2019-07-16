@@ -114,6 +114,14 @@
       <artifactId>curator-framework</artifactId>
       <version>4.2.0</version>
     </dependency>
+
+    <!--  lettuce for redis  -->
+    <dependency>
+      <groupId>io.lettuce</groupId>
+      <artifactId>lettuce-core</artifactId>
+      <version>5.1.7.RELEASE</version>
+    </dependency>
+
     <!--   ***********************  utils   ***********************   -->
     <!-- lang -->
     <dependency>

@@ -66,7 +66,7 @@ public class ZookeeperRegister implements RegisterService {
             executor.shutdown();
         if(client != null)
             client.close();
-        logger.info("zookeeper client stopped...");
+        logger.info("ZKRegister: zookeeper client stopped...");
     }
 
     @Override
@@ -268,7 +268,8 @@ public class ZookeeperRegister implements RegisterService {
         }
     }
 
-    private void inquireRefresh(String key){
+    @Override
+    public List<String> inquireRefresh(String key){
         String nodePath = "/".concat(key);
         if(checkNodeExists(nodePath) == null){
             logger.error("ZKRegister: nodePath={} not exists...",nodePath);
@@ -277,14 +278,18 @@ public class ZookeeperRegister implements RegisterService {
         try {
             List<String> hosts = client.getChildren().forPath(nodePath);
             if(hosts != null && !hosts.isEmpty()){
-                final Set<String> oldHosts = serviceMap.get(key);
-                oldHosts.retainAll(hosts); // not atomic
-                oldHosts.addAll(hosts);
+                Set<String> set = Collections.newSetFromMap(new ConcurrentHashMap<>());
+                set.addAll(hosts);
+                serviceMap.put(key,set);
+                //final Set<String> oldHosts = serviceMap.get(key);
+                //oldHosts.retainAll(hosts); // not atomic
+                //oldHosts.addAll(hosts);
             }
+            return hosts;
         }catch (Exception e){
             logger.error("ZKRegister: inquire nodePath={} for refresh encounter one exception...",nodePath);
         }
-
+        return null;
     }
 
     private Stat checkNodeExists(String nodePath){

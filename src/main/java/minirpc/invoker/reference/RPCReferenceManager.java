@@ -85,8 +85,11 @@ public class RPCReferenceManager {
         else this.invokerFactory = DefaultRPCInvokerFactory.getInstance();
 
         // register >>> subscribe the key
-        if(this.invokerFactory.getRegister() != null)
-            this.invokerFactory.getRegister().subscribe(generateKey(this.interfaceClass.getName(),this.version));
+        if(this.invokerFactory.getRegister() != null) {
+            String serviceKey = generateKey(this.interfaceClass.getName(), this.version);
+            this.invokerFactory.getRegister().subscribe(serviceKey);
+            this.invokerFactory.getRegister().inquireRefresh(serviceKey); // first time refresh
+        }
         // TODO when referenceManger is useless, it should auto unsubscribe the interface
         initClient();
     }
@@ -141,6 +144,7 @@ public class RPCReferenceManager {
                             List<String> hosts = register.discovery(serviceKey);
                             if(hosts != null && !hosts.isEmpty()) // do balance
                                 finalAddress = this.invokerFactory.getBalanceMethod().select(serviceKey,hosts,new SelectOptions(methodName,args));
+                            else logger.warn("Invoker: cannot find address from register...");
                         }
                         if(finalAddress == null)
                             throw new RPCException("Invoker: cannot resolve the host address...");

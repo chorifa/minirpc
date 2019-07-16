@@ -35,9 +35,11 @@ public class AppTest
      */
 
     @Test
-    public void testZKProvider(){
+    public void testProvider(){
+        RegisterConfig config = new RegisterConfig();
+        config.setRegisterAddress("redis://localhost:6379");
         DefaultRPCProviderFactory providerFactory = new DefaultRPCProviderFactory()
-                .init(RegisterType.ZOOKEEPER, new RegisterConfig(),8086)
+                .init(RegisterType.REDIS, config ,8086)
                 .addService(TestService.class.getName(),null, new TestServiceImpl());
         providerFactory.start();
         try{
@@ -50,7 +52,7 @@ public class AppTest
 
     }
 
-    public void testProvider(){
+    public void testDefaultProvider(){
         DefaultRPCProviderFactory providerFactory = new DefaultRPCProviderFactory().init(SerialType.FASTJSON)
                 .addService(TestService.class.getName(),null, new TestServiceImpl());
         providerFactory.start();
@@ -65,8 +67,11 @@ public class AppTest
     }
 
     @Test
-    public void testZKInvoker(){
-        DefaultRPCInvokerFactory invokerFactory = new DefaultRPCInvokerFactory(RegisterType.ZOOKEEPER, new RegisterConfig());
+    public void testInvoker(){
+        RegisterConfig config = new RegisterConfig();
+        config.setInvoker(true);
+        config.setRegisterAddress("redis://localhost:6379");
+        DefaultRPCInvokerFactory invokerFactory = new DefaultRPCInvokerFactory(RegisterType.REDIS, config);
         try{
             invokerFactory.start(); // start the register
             RPCReferenceManager manager = new RPCReferenceManager(TestService.class, null,
