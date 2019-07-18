@@ -59,6 +59,7 @@ public class ZookeeperRegister implements RegisterService {
 
     @Override
     public void stop() {
+        // no need for unregister
         // unsubscribe will also rectify childCacheMap. can not use forEach
         List<String> rawSet = new ArrayList<>(childCacheMap.keySet());
         rawSet.forEach(this::unsubscribe);

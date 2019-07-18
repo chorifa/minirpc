@@ -118,7 +118,6 @@ public class DefaultRPCProviderFactory {
                 serviceMap.keySet().forEach((k)-> register.register(k,this.address));
             });
             server.setStopCallBack(()->{
-                // no need for unregister
                 register.stop();
                 register=null;
             });
