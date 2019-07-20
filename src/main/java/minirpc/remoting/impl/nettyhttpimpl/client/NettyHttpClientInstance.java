@@ -13,7 +13,6 @@ import io.netty.handler.codec.http.*;
 import io.netty.handler.timeout.IdleStateHandler;
 import minirpc.remoting.ClientInstance;
 import minirpc.remoting.entity.RemotingRequest;
-import minirpc.remoting.impl.nettyimpl.client.NettyClientInstance;
 import minirpc.utils.RPCException;
 import minirpc.utils.serialize.Serializer;
 import org.slf4j.Logger;
@@ -24,7 +23,7 @@ import java.net.URL;
 import java.util.concurrent.TimeUnit;
 
 public class NettyHttpClientInstance extends ClientInstance {
-    private static Logger logger = LoggerFactory.getLogger(NettyClientInstance.class);
+    private static Logger logger = LoggerFactory.getLogger(NettyHttpClientInstance.class);
 
     private Channel channel;
     private EventLoopGroup group;

@@ -62,6 +62,7 @@ public class NettyHttp2Server extends Server {
 
                 ServerBootstrap sbs = new ServerBootstrap();
                 sbs.option(ChannelOption.SO_BACKLOG,1024);
+                sbs.childOption(ChannelOption.SO_KEEPALIVE, true);
                 sbs.group(bossGroup, workGroup).channel(NioServerSocketChannel.class)
                         .handler(new LoggingHandler(LogLevel.INFO))
                         .childHandler(new Http2ServerInitializer(sslCtx, providerFactory, executorService));

@@ -52,8 +52,9 @@ public class AppTest
 
     }
 
+    @Test
     public void testDefaultProvider(){
-        DefaultRPCProviderFactory providerFactory = new DefaultRPCProviderFactory().init(SerialType.FASTJSON)
+        DefaultRPCProviderFactory providerFactory = new DefaultRPCProviderFactory().init(RemotingType.NETTY_HTTP2,SerialType.HESSIAN)
                 .addService(TestService.class.getName(),null, new TestServiceImpl());
         providerFactory.start();
         try{
@@ -124,9 +125,9 @@ public class AppTest
     }
 
     @Test
-    public void testInvokerSerialize(){
+    public void testInvokerSerializeOrRemoting(){
         try{
-            RPCReferenceManager manager = new RPCReferenceManager(TestService.class, SendType.CALLBACK, SerialType.FASTJSON);
+            RPCReferenceManager manager = new RPCReferenceManager(TestService.class, RemotingType.NETTY_HTTP2, SendType.CALLBACK, SerialType.HESSIAN);
             manager.setCallBack(new InvokeCallBack<UserDO>() {
                 @Override
                 public void onSuccess(UserDO s) throws Exception {

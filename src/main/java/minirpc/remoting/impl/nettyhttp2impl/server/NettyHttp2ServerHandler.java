@@ -54,8 +54,7 @@ public class NettyHttp2ServerHandler extends ChannelDuplexHandler {
 
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-        logger.info("using http2 handler... read request done.");
-        ctx.flush();
+        logger.info("using http2 handler... read request and send response done.");
     }
 
     private void onHeaderRead(ChannelHandlerContext ctx, Http2HeadersFrame headers){
@@ -105,6 +104,7 @@ public class NettyHttp2ServerHandler extends ChannelDuplexHandler {
         Http2Headers headers = new DefaultHttp2Headers().status(HttpResponseStatus.OK.codeAsText());
         ctx.write(new DefaultHttp2HeadersFrame(headers));
         ctx.write(new DefaultHttp2DataFrame(payload,true));
+        ctx.flush();
     }
 
 }

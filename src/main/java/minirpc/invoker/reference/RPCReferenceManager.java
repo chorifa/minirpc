@@ -12,6 +12,7 @@ import minirpc.remoting.entity.RemotingFutureResponse;
 import minirpc.remoting.entity.RemotingRequest;
 import minirpc.remoting.entity.RemotingResponse;
 import minirpc.utils.RPCException;
+import minirpc.utils.StreamID4Http2Util;
 import minirpc.utils.loadbalance.SelectOptions;
 import minirpc.utils.serialize.SerialType;
 import minirpc.utils.serialize.Serializer;
@@ -159,7 +160,10 @@ public class RPCReferenceManager {
                     request.setMethodName(methodName);
                     request.setVersion(version);
                     request.setParameterType(parameterType);
-                    request.setRequestId(UUID.randomUUID().toString());
+                    if(remotingType == RemotingType.NETTY_HTTP2) // use stream id (odd int, 3 - Integer.MAX)
+                        request.setRequestId(String.valueOf(StreamID4Http2Util.getCurrentID()));
+                    else
+                        request.setRequestId(UUID.randomUUID().toString());
 
                     logger.debug("try to send...");
                     // send
