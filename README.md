@@ -1,11 +1,16 @@
 miniRPC: a concise rpc implement with multi-basic functions
------------------------------------------------------------
-) use Netty(tcp/or/http) in the remoting module  
-) apply zookeeper/or/redis as different registers 
-) implement various load-balance strategys: random, round, consistentHash, LFU, LRU, LeastUnreplied, etc.  
-) provide different invoke-method: sync, future, call back  
-) offer diverse serial approaches  
+===
+A concise RPC framework based on Netty Transport with Zookeeper/redis as register.
+- jdk 8
 
-note: 
-* the remoting module refers xuxueli/xxl-rpc >>> https://github.com/xuxueli/xxl-rpc  
-* load-balance methods refer dubbo >>> https://github.com/apache/dubbo  
+Features
+-----------------------------------------------------------
+- Exploit Netty(TCP/HTTP/HTTP2) in the remoting module
+- Apply zookeeper/or/redis as different registers
+- Implement various load-balance strategys: random, round, consistentHash, LFU, LRU, LeastUnreplied, etc.  
+- Provide different invoke-method: sync, future, call-back  
+- Offer diverse serial approaches, including Protostuff, Hessian, JSON, etc.  
+
+#### Note:  
+- the remoting module refers [xuxueli/xxl-rpc](https://github.com/xuxueli/xxl-rpc)  
+- load-balance methods refer [dubbo](https://github.com/apache/dubbo)  
