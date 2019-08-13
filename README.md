@@ -9,8 +9,9 @@ Features
 - Apply zookeeper/or/redis as different registers
 - Implement various load-balance strategys: random, round, consistentHash, LFU, LRU, LeastUnreplied, etc.  
 - Provide different invoke-method: sync, future, call-back  
-- Offer diverse serial approaches, including Protostuff, Hessian, JSON, etc.  
+- Offer diverse serial approaches, including Protostuff, Hessian, JSON, etc.   
+- Support proxy for interface(default, jdk-impl) and class(javassist-impl)
 
 #### Note:  
-- the remoting module refers [xuxueli/xxl-rpc](https://github.com/xuxueli/xxl-rpc)  
-- load-balance methods refer [dubbo](https://github.com/apache/dubbo)  
+- the remoting module refers to [xuxueli/xxl-rpc](https://github.com/xuxueli/xxl-rpc)  
+- load-balance methods refer to [dubbo](https://github.com/apache/dubbo)  

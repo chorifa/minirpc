@@ -93,7 +93,7 @@ public class DefaultRPCInvokerFactory {
         if(register != null && register.isAvailable())
             register.stop();
 
-        for(InnerCallBack callBack : stopCallBackList)
+        for(InnerCallBack callBack : stopCallBackList) // one in: close all connection
             callBack.run();
 
         if(executorService != null && !executorService.isShutdown())
@@ -144,24 +144,6 @@ public class DefaultRPCInvokerFactory {
                 }
 
             });
-            /*
-            if(response.getErrorMsg() == null)
-                executeTask(()->{
-                    try {
-                        callBack.onSuccess(response.getResult());
-                    }catch (Exception e){
-                        logger.error("encounter exception when execute onSuccess CallBack",e);
-                        throw new RPCException("encounter exception when execute onSuccess CallBack",e);
-                    }
-                });
-            else executeTask(()->{
-                try {
-                    callBack.onException(new RPCException(response.getErrorMsg()));
-                }catch (Exception e){
-                    logger.error("encounter exception when execute onException CallBack",e);
-                    throw new RPCException("encounter exception when execute onException CallBack",e);
-                }
-            });*/
         }else if(!futureResponse.set(response)) // future and sync
             throw new RPCException("set response in future failed...");
 

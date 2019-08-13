@@ -2,6 +2,8 @@ package minirpc;
 
 import static org.junit.Assert.assertTrue;
 
+import minirpc.api.HelloService;
+import minirpc.api.HelloServiceImpl;
 import minirpc.api.TestService;
 import minirpc.api.TestServiceImpl;
 import minirpc.api.param.NageDO;
@@ -9,13 +11,14 @@ import minirpc.api.param.TestDO;
 import minirpc.api.param.UserDO;
 import minirpc.invoker.DefaultRPCInvokerFactory;
 import minirpc.invoker.reference.RPCReferenceManager;
+import minirpc.invoker.reference.RPCReferenceManagerOld;
+import minirpc.invoker.reference.ReferenceManagerBuilder;
 import minirpc.invoker.type.FutureType;
 import minirpc.invoker.type.InvokeCallBack;
 import minirpc.invoker.type.SendType;
 import minirpc.provider.DefaultRPCProviderFactory;
 import minirpc.register.RegisterConfig;
 import minirpc.register.RegisterType;
-import minirpc.register.impl.ZookeeperRegister;
 import minirpc.remoting.RemotingType;
 import minirpc.utils.serialize.SerialType;
 import org.junit.Test;
@@ -54,8 +57,9 @@ public class AppTest
 
     @Test
     public void testDefaultProvider(){
-        DefaultRPCProviderFactory providerFactory = new DefaultRPCProviderFactory().init(RemotingType.NETTY_HTTP2,SerialType.HESSIAN)
-                .addService(TestService.class.getName(),null, new TestServiceImpl());
+        DefaultRPCProviderFactory providerFactory = new DefaultRPCProviderFactory().init(RemotingType.NETTY,SerialType.HESSIAN)
+                .addService(HelloService.class.getName(),null, new HelloServiceImpl<>())
+                .addService(TestService.class.getName(),null, new TestServiceImpl<>());
         providerFactory.start();
         try{
             TimeUnit.MINUTES.sleep(1);
@@ -68,6 +72,55 @@ public class AppTest
     }
 
     @Test
+    public void testInvokerBuilder(){
+        RPCReferenceManager<HelloService<UserDO>> manager = ReferenceManagerBuilder.init()
+                .forService(HelloService.class).forAddress("localhost:8086").build();
+        HelloService<UserDO> service = manager.get();
+        NageDO nageDO = new NageDO();
+        nageDO.age=10; nageDO.name="jiecheng Chong";
+        List<String> likes = new ArrayList<>();
+        likes.add("apple");
+        likes.add("egg");
+        service.sayHi(123);
+        String s = service.sayHello("jiecheng Chong", 25);
+        System.out.println(s);
+        UserDO userDO = service.show(nageDO, likes);
+        System.out.println(userDO);
+        userDO = service.echo(userDO);
+        System.out.println(userDO);
+        try {
+            TimeUnit.SECONDS.sleep(5);
+        }catch (InterruptedException e){
+            e.printStackTrace();
+        }finally {
+            manager.getInvokerFactory().stop();
+        }
+    }
+
+    @Test
+    public void TestInvokerInterface(){
+        RPCReferenceManager<TestService<UserDO>> manager = ReferenceManagerBuilder.init()
+                .forService(TestService.class).forAddress("localhost:8086").build();
+        TestService<UserDO> service = manager.get();
+        NageDO nageDO = new NageDO();
+        nageDO.age=10; nageDO.name="jiecheng Chong";
+        List<String> likes = new ArrayList<>();
+        likes.add("apple");
+        likes.add("egg");
+        UserDO userDO = service.show(nageDO, likes);
+        System.out.println(userDO);
+        userDO = service.echo(userDO);
+        System.out.println(userDO);
+        try {
+            TimeUnit.SECONDS.sleep(5);
+        }catch (InterruptedException e){
+            e.printStackTrace();
+        }finally {
+            manager.getInvokerFactory().stop();
+        }
+    }
+
+    @Test
     public void testInvoker(){
         RegisterConfig config = new RegisterConfig();
         config.setInvoker(true);
@@ -75,7 +128,7 @@ public class AppTest
         DefaultRPCInvokerFactory invokerFactory = new DefaultRPCInvokerFactory(RegisterType.REDIS, config);
         try{
             invokerFactory.start(); // start the register
-            RPCReferenceManager manager = new RPCReferenceManager(TestService.class, null,
+            RPCReferenceManagerOld manager = new RPCReferenceManagerOld(TestService.class, null,
                     null,RemotingType.NETTY, SendType.CALLBACK,SerialType.HESSIAN,invokerFactory); // subscribe
             manager.setCallBack(new InvokeCallBack<UserDO>() {
                 @Override
@@ -127,7 +180,7 @@ public class AppTest
     @Test
     public void testInvokerSerializeOrRemoting(){
         try{
-            RPCReferenceManager manager = new RPCReferenceManager(TestService.class, RemotingType.NETTY_HTTP2, SendType.CALLBACK, SerialType.HESSIAN);
+            RPCReferenceManagerOld manager = new RPCReferenceManagerOld(TestService.class, RemotingType.NETTY_HTTP2, SendType.CALLBACK, SerialType.HESSIAN);
             manager.setCallBack(new InvokeCallBack<UserDO>() {
                 @Override
                 public void onSuccess(UserDO s) throws Exception {
@@ -161,7 +214,7 @@ public class AppTest
     @Test
     public void testInvokerCallBack(){
         try {
-            RPCReferenceManager manager = new RPCReferenceManager(TestService.class, SendType.CALLBACK, SerialType.JACKSON);
+            RPCReferenceManagerOld manager = new RPCReferenceManagerOld(TestService.class, SendType.CALLBACK, SerialType.JACKSON);
             manager.setCallBack(new InvokeCallBack<String>() {
                 @Override
                 public void onSuccess(String s) throws Exception {
@@ -187,7 +240,7 @@ public class AppTest
 
     public void testInvokerGeneric(){
         try {
-            RPCReferenceManager manager = new RPCReferenceManager(TestService.class);
+            RPCReferenceManagerOld manager = new RPCReferenceManagerOld(TestService.class);
             TestService<String> service = (TestService<String>) manager.get();
             String s = service.echo("jiecheng Chong");
             System.out.println(s);
@@ -203,7 +256,7 @@ public class AppTest
         Thread[] threads = new Thread[10];
         for (int i = 0; i < 10; i++) {
             threads[i] = new Thread(() -> {
-                RPCReferenceManager manager = new RPCReferenceManager(TestService.class, SendType.FUTURE);
+                RPCReferenceManagerOld manager = new RPCReferenceManagerOld(TestService.class, SendType.FUTURE);
                 try {
                     TestService service = (TestService) manager.get();
         /*
