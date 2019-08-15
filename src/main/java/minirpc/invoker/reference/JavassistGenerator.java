@@ -5,36 +5,31 @@ import minirpc.utils.RPCException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.*;
 
-public class JavassistGenerator {
+class JavassistGenerator {
     private static final Logger logger = LoggerFactory.getLogger(JavassistGenerator.class);
 
-    private static final Map<WeakReference<ClassLoader>, ClassPool> POOL_MAP = new ConcurrentHashMap<>(); //ClassLoader - ClassPool
-    private static final Map<WeakReference<ClassLoader>, Map<String, Class<?>>> PROXY_CACHE = new ConcurrentHashMap<>();
+    private static final Map<ClassLoader, ClassPool> POOL_MAP = Collections.synchronizedMap(new WeakHashMap<>()); //ClassLoader - ClassPool
+    private static final Map<ClassLoader, Map<String, Class<?>>> PROXY_CACHE = Collections.synchronizedMap(new WeakHashMap<>());
 
     static Object getProxy(Class<?> origin, InvocationHandlerForJavassist handler){
-        WeakReference<ClassLoader> ref = new WeakReference<>(Thread.currentThread().getContextClassLoader());
-        Map<String, Class<?>> map = PROXY_CACHE.get(ref);
+        ClassLoader loader = Thread.currentThread().getContextClassLoader();
+        Map<String, Class<?>> map = PROXY_CACHE.get(loader);
         // make sure value in PROXY_CACHE can only create once
         if(map == null){
             map = new HashMap<>();
-            if(PROXY_CACHE.putIfAbsent(ref,map) != null) // already have value in multi-thread
-                map = PROXY_CACHE.get(ref);
+            Map<String, Class<?>> oldMap = PROXY_CACHE.putIfAbsent(loader,map); // already have value in multi-thread
+            if(oldMap != null) //
+                map = oldMap;
         }
 
-        Class<?> clazz = map.get(origin.getName());
-        if(clazz == null){
-            synchronized (map){
-                clazz = map.get(origin.getName());
-                if(clazz == null)
-                    clazz = generateProxy(origin);
+        Class<?> clazz;
+        synchronized (map){ // not thread-safe
+            clazz = map.get(origin.getName()); //
+            if(clazz == null){
+                clazz = generateProxy(origin);
                 if(clazz != null)
                     map.put(origin.getName(),clazz);
             }
@@ -60,7 +55,7 @@ public class JavassistGenerator {
         try {
             CtClass ct = pool.getAndRename(origin.getName(), origin.getName() + "Proxy");
             // Add InvocationHandler Field
-            ct.addField(CtField.make("private minirpc.invoker.reference.InvocationHandler handler;", ct));
+            ct.addField(CtField.make("private minirpc.invoker.reference.InvocationHandlerForJavassist handler;", ct));
             // Add methods field
             ct.addField(CtField.make("private static javassist.CtMethod[] methods;", ct));
             // delete abstract flag
@@ -105,14 +100,14 @@ public class JavassistGenerator {
         if(loader == null)
             return ClassPool.getDefault();
 
-        WeakReference<ClassLoader> ref = new WeakReference<>(loader);
-        ClassPool pool = POOL_MAP.get(ref);
+        ClassPool pool = POOL_MAP.get(loader);
         if(pool == null){
             pool = new ClassPool(true);
             pool.appendClassPath(new LoaderClassPath(loader));
-            POOL_MAP.putIfAbsent(ref, pool);
+            ClassPool oldPool = POOL_MAP.putIfAbsent(loader, pool);
+            if(oldPool != null)
+                pool = oldPool;
         }
-        // TODO how to clean
         return pool;
     }
 

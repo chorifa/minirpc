@@ -58,8 +58,8 @@ public class AppTest
     @Test
     public void testDefaultProvider(){
         DefaultRPCProviderFactory providerFactory = new DefaultRPCProviderFactory().init(RemotingType.NETTY,SerialType.HESSIAN)
-                .addService(HelloService.class.getName(),null, new HelloServiceImpl<>())
-                .addService(TestService.class.getName(),null, new TestServiceImpl<>());
+                .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>())
+                .addService(TestService.class.getName(),null, new TestServiceImpl<String>());
         providerFactory.start();
         try{
             TimeUnit.MINUTES.sleep(1);

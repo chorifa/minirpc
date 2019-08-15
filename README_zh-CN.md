@@ -1,7 +1,9 @@
 # MEMO
 
 ## 待完成事项
+- 测试javassist和jdk代理的速度(创建速度以及运行速度)
 - 增加自定义注解，增加对springboot的支持
+- 实现依赖注入DI的功能
 
 ## 架构总结
 miniRPC分为4个大部分，其中invoker包代表了服务调用方，provider包代表了服务提供方，register包包含了注册中心，remoting包抽象了NIO通信的行为，util包定义了一些方法/结构模块
