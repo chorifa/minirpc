@@ -75,6 +75,7 @@ public class AppTest
     public void testInvokerBuilder(){
         RPCReferenceManager<HelloService<UserDO>> manager = ReferenceManagerBuilder.init()
                 .forService(HelloService.class).forAddress("localhost:8086").build();
+        manager.getInvokerFactory().start();
         HelloService<UserDO> service = manager.get();
         NageDO nageDO = new NageDO();
         nageDO.age=10; nageDO.name="jiecheng Chong";

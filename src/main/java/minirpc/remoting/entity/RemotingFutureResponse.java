@@ -67,7 +67,7 @@ public class RemotingFutureResponse implements Future<RemotingResponse> {
     public RemotingResponse get() throws InterruptedException, ExecutionException {
         if(!done){
             synchronized (lock){
-                while(!done){
+                if (!done){ // if is better rather than while, here. caz only set once.
                     lock.wait();
                 }
             }

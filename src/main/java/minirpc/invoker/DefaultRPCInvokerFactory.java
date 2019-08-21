@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DefaultRPCInvokerFactory {
     private final static Logger logger = LoggerFactory.getLogger(DefaultRPCInvokerFactory.class);
@@ -26,6 +27,9 @@ public class DefaultRPCInvokerFactory {
     private RegisterService register;
     private RegisterConfig config;
     private BalanceMethod balanceMethod;
+
+    private volatile boolean isRunning = false;
+    private AtomicBoolean runLock = new AtomicBoolean(false);
 
     private final static DefaultRPCInvokerFactory DEFAULT_INSTANCE = new DefaultRPCInvokerFactory();
     public static DefaultRPCInvokerFactory getInstance(){
@@ -82,23 +86,36 @@ public class DefaultRPCInvokerFactory {
         stopCallBackList.add(innerCallBack);
     }
 
-    // TODO when to start
+    // when to start
     public void start(){
-        if(register != null)
-            register.start(config);
+        start(false);
     }
 
-    // TODO when to stop
+    public void start(boolean autoClose){
+        if(!isRunning && runLock.compareAndSet(false,true)){
+            if(register != null)
+                register.start(config);
+            if(autoClose)
+                Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
+            isRunning = true;
+            logger.info("InvokerFactory start running...");
+        }
+    }
+
+    // when to stop : Can use hook thread to auto-close
     public void stop(){
-        if(register != null && register.isAvailable())
-            register.stop();
+        if(isRunning && runLock.compareAndSet(true,false)) {
+            if (register != null && register.isAvailable())
+                register.stop();
 
-        for(InnerCallBack callBack : stopCallBackList) // one in: close all connection
-            callBack.run();
+            for (InnerCallBack callBack : stopCallBackList) // one in: close all connection
+                callBack.run();
 
-        if(executorService != null && !executorService.isShutdown())
-            executorService.shutdown();
-        logger.info("InvokerFactory shut down...");
+            if (executorService != null && !executorService.isShutdown())
+                executorService.shutdown();
+            logger.info("InvokerFactory shut down...");
+        }
+        else logger.info("InvokerFactory already shut down...");
     }
 
     // --------------------------- future map ---------------------------
@@ -151,8 +168,8 @@ public class DefaultRPCInvokerFactory {
     }
 
     // --------------------------- execute pool for callBack ---------------------------
-    // TODO how to auto close this service pool ???
-    private ExecutorService executorService = null;
+    // TODO how to auto close this service pool ??? --->>> use hook thread
+    private volatile ExecutorService executorService = null;
 
     private void executeTask(Runnable runnable){
         if(executorService == null){
