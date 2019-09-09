@@ -73,7 +73,7 @@ public class AppTest
 
     @Test
     public void testInvokerBuilder(){
-        RPCReferenceManager<HelloService<UserDO>> manager = ReferenceManagerBuilder.init()
+        RPCReferenceManager manager = ReferenceManagerBuilder.init()
                 .forService(HelloService.class).forAddress("localhost:8086").build();
         manager.getInvokerFactory().start();
         HelloService<UserDO> service = manager.get();
@@ -100,7 +100,7 @@ public class AppTest
 
     @Test
     public void TestInvokerInterface(){
-        RPCReferenceManager<TestService<UserDO>> manager = ReferenceManagerBuilder.init()
+        RPCReferenceManager manager = ReferenceManagerBuilder.init()
                 .forService(TestService.class).forAddress("localhost:8086").build();
         TestService<UserDO> service = manager.get();
         NageDO nageDO = new NageDO();

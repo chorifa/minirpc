@@ -33,7 +33,7 @@ public class ReferenceManagerBuilder {
 	}
 
 	// according to return type to infer generic
-	public <T> RPCReferenceManager<T> build (){
+	public RPCReferenceManager build (){
 		if(serviceClass == null)
 			throw new RPCException("origin service can not be null...");
 		if(serializer == null){
@@ -52,7 +52,7 @@ public class ReferenceManagerBuilder {
 			remotingType = RemotingType.NETTY;
 			logger.warn("remoting type not specify. using TCP(Socket) as default.");
 		}
-		return new RPCReferenceManager<>(this);
+		return new RPCReferenceManager(this);
 	}
 
 	// set

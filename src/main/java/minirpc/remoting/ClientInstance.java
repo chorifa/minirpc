@@ -27,7 +27,7 @@ public abstract class ClientInstance {
 
     // -------------------    outsider method    -------------------
 
-    public static void asyncSend(String address, RemotingRequest request, Class<? extends ClientInstance> className, RPCReferenceManager<?> referenceManager) throws Exception {
+    public static void asyncSend(String address, RemotingRequest request, Class<? extends ClientInstance> className, RPCReferenceManager referenceManager) throws Exception {
         ClientInstance clientInstance = getInstance(address,className,referenceManager);
         // send invoke request
         clientInstance.send(request);
@@ -37,7 +37,7 @@ public abstract class ClientInstance {
     private static volatile ConcurrentHashMap<String /* address */ , ClientInstance> connectionPool;
     private static volatile ConcurrentHashMap<String /* address */ , Object> lockMap = new ConcurrentHashMap<>();
 
-    private static ClientInstance getInstance(String address, Class<? extends ClientInstance> className, RPCReferenceManager<?> referenceManager) throws Exception{
+    private static ClientInstance getInstance(String address, Class<? extends ClientInstance> className, RPCReferenceManager referenceManager) throws Exception{
         if(connectionPool == null){
             synchronized (ClientInstance.class){
                 if(connectionPool == null){
@@ -87,7 +87,7 @@ public abstract class ClientInstance {
             // not valid
             if(clientInstance != null){
                 clientInstance.close();
-                lockMap.remove(address);
+                connectionPool.remove(address);
             }
 
             ClientInstance newInstance;

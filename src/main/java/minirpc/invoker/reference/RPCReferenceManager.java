@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-public class RPCReferenceManager<T> {
+public class RPCReferenceManager {
     private final static Logger logger = LoggerFactory.getLogger(RPCReferenceManager.class);
 
     private Serializer serializer;
@@ -98,7 +98,7 @@ public class RPCReferenceManager<T> {
      * @return T proxy
      */
     @SuppressWarnings("unchecked")
-    public T get(){
+    public <T> T get(){
         if(serviceClass.isInterface()) {
             InvocationHandler handler = (proxy, method, args) -> {
                 // create parameters
