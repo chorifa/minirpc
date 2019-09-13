@@ -27,6 +27,7 @@ DefaultRPCProviderFactory并不是真正的服务提供者，其内部拥有Serv
 - Client和ClientInstance都是抽象类，Client和ReferenceManger对应，ClientInstance和InvokerFactory对应。Client包含调用的必要信息，通过ClientInstance类的静态asyncSend方法进行发送。ClientInstance定义了一个ConcurrentHashMap(String,ClientInstance对)，作为连接池用来缓存所有连接。
 - 静态asyncSend方法需要完成拿到ClientInstance通信实体，以及调用ClientInstance对象的send方法完成真实发送。先根据address取得对应的连接实体ClientInstance，如果没有就新建一个连接。作为连接池的map有一个对应的lockMap，同样是address作为key，lockMap的元素一旦创建不允许更改。新建连接时会先拿到address对应lock的监视器锁，然后二次判断没有连接时再创建。
 - ClientInstance类的实现类需要重载send,close等方法
+- 注意ReferenceManger中保存的是Client只有方法没有真实实体，每次调用Client的发送方法，都会先通过ClientInstance拿到连接，不能由ReferenceManger缓存连接(字段)否则可能到某些时候无效了(C++里还会析构)
 #### Protocol
 借助Netty支持TCP(socket),HTTP1,以及HTTP2三种协议。  
 ___(阐述HTTP2的协商以及解析过程，Netty对HTTP和HTTP2的处理过程)___   
