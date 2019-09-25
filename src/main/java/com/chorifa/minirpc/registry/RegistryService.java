@@ -1,12 +1,12 @@
-package com.chorifa.minirpc.register;
+package com.chorifa.minirpc.registry;
 
 import java.util.List;
 
-public interface RegisterService {
+public interface RegistryService {
 
     boolean isAvailable();
 
-    void start(RegisterConfig config);
+    void start(RegistryConfig config);
 
     void stop();
 

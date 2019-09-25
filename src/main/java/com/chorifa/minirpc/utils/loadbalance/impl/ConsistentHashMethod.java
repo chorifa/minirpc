@@ -21,6 +21,7 @@ public class ConsistentHashMethod implements BalanceMethod {
         if(ops == null)
             throw new RPCException("LoadBalance: SelectOptions should not be null...");
         String key = serviceKey+"."+ops.getMethodName();
+        // why not providers.hashCode() ?
         int identityHashCode = System.identityHashCode(providers);
         ConsistentHashSelector selector = selectors.get(key);
         if(selector == null || selector.identityHashCode != identityHashCode){

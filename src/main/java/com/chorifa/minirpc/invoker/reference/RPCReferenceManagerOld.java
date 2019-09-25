@@ -8,7 +8,7 @@ import com.chorifa.minirpc.invoker.DefaultRPCInvokerFactory;
 import com.chorifa.minirpc.invoker.type.FutureType;
 import com.chorifa.minirpc.invoker.type.InvokeCallBack;
 import com.chorifa.minirpc.invoker.type.SendType;
-import com.chorifa.minirpc.register.RegisterService;
+import com.chorifa.minirpc.registry.RegistryService;
 import com.chorifa.minirpc.remoting.entity.RemotingFutureResponse;
 import com.chorifa.minirpc.remoting.entity.RemotingResponse;
 import com.chorifa.minirpc.utils.RPCException;
@@ -137,7 +137,7 @@ public class RPCReferenceManagerOld {
                     // TODO not find >>> retry
                     String finalAddress = this.address;
                     if(finalAddress == null){
-                        RegisterService register = this.invokerFactory.getRegister();
+                        RegistryService register = this.invokerFactory.getRegister();
                         if(register != null && register.isAvailable()){
                             String serviceKey = generateKey(this.serviceClass.getName(),this.version);
                             List<String> hosts = register.discovery(serviceKey);

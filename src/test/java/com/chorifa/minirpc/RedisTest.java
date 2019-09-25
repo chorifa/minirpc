@@ -6,7 +6,7 @@ import io.lettuce.core.api.sync.RedisCommands;
 import io.lettuce.core.pubsub.RedisPubSubListener;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.core.pubsub.api.sync.RedisPubSubCommands;
-import com.chorifa.minirpc.register.impl.RedisRegister;
+import com.chorifa.minirpc.registry.impl.RedisRegistry;
 import org.junit.Test;
 
 import java.util.List;
@@ -50,7 +50,7 @@ public class RedisTest {
 
     @Test
     public void testClean(){
-        RedisRegister.Monitor monitor = new RedisRegister.Monitor(
+        RedisRegistry.Monitor monitor = new RedisRegistry.Monitor(
                 "test",10,20*1000,500,"redis://localhost:6379");
         try {
             monitor.start();
@@ -147,7 +147,7 @@ public class RedisTest {
             });
             commands.subscribe("serviceKey");
             commands.subscribe("testKey");
-            TimeUnit.SECONDS.sleep(20);
+            TimeUnit.SECONDS.sleep(60);
         }catch (Exception e){
             e.printStackTrace();
         }finally {
@@ -159,13 +159,20 @@ public class RedisTest {
     @Test
     public void testPubSub(){
         Thread t1 = new Thread(()->{
-            RedisPS[] subs = new RedisPS[5];
-            for(int i = 0; i < 5; i++){
+            RedisPS[] subs = new RedisPS[3];
+            for(int i = 0; i < subs.length; i++){
                 subs[i] = new RedisPS();
-                subs[i].init(true).subscribe("serviceKey");
+                subs[i].init(true).subscribe("serviceKey").subscribe("serviceKey");
+            }
+            for (RedisPS redisPS : subs) {
+                redisPS.subscribe("serviceKey");
             }
             try{
                 TimeUnit.SECONDS.sleep(10);
+                for (RedisPS redisPS : subs) {
+                    redisPS.subscribe("serviceKey");
+                }
+                TimeUnit.SECONDS.sleep(30);
             }catch (Exception e){
                 e.printStackTrace();
             }finally {
@@ -188,8 +195,10 @@ public class RedisTest {
                pub.shutdown();
         });
 
-        t1.start(); t2.start();
         try {
+            t1.start();
+            Thread.sleep(1000);
+            t2.start();
             t1.join();
             t2.join();
         }catch (InterruptedException e){
@@ -201,49 +210,52 @@ public class RedisTest {
         private RedisClient client = RedisClient.create("redis://localhost:6379");
         private StatefulRedisConnection<String,String> connection;
         private StatefulRedisPubSubConnection<String,String> psConnection;
+        private RedisPubSubCommands<String,String> pscommands;
 
         RedisPS init(boolean isConsumer){
-            if(isConsumer)
+            if(isConsumer) {
                 psConnection = client.connectPubSub();
+                psConnection.addListener(new RedisPubSubListener<String, String>() {
+                    @Override
+                    public void message(String s, String s2) { // s is channel; s2 is message
+                        System.out.println("channel: "+s+" get message: "+s2);
+                    }
+
+                    @Override
+                    public void message(String s, String k1, String s2) { // s is pattern; k1 is channel
+                        System.out.println("pattern: "+s+" in channel: "+s+" get message: "+s2);
+                    }
+
+                    @Override
+                    public void subscribed(String s, long l) {
+
+                    }
+
+                    @Override
+                    public void psubscribed(String s, long l) {
+
+                    }
+
+                    @Override
+                    public void unsubscribed(String s, long l) {
+
+                    }
+
+                    @Override
+                    public void punsubscribed(String s, long l) {
+
+                    }
+                });
+                pscommands = psConnection.sync();
+            }
             else
                 connection = client.connect();
             return this;
         }
 
-        void subscribe(String channel){
-            RedisPubSubCommands<String,String> commands = psConnection.sync();
-            psConnection.addListener(new RedisPubSubListener<String, String>() {
-                @Override
-                public void message(String s, String s2) { // s is channel; s2 is message
-                    System.out.println("channel: "+s+" get message: "+s2);
-                }
-
-                @Override
-                public void message(String s, String k1, String s2) { // s is pattern; k1 is channel
-                    System.out.println("pattern: "+s+" in channel: "+s+" get message: "+s2);
-                }
-
-                @Override
-                public void subscribed(String s, long l) {
-
-                }
-
-                @Override
-                public void psubscribed(String s, long l) {
-
-                }
-
-                @Override
-                public void unsubscribed(String s, long l) {
-
-                }
-
-                @Override
-                public void punsubscribed(String s, long l) {
-
-                }
-            });
-            commands.subscribe(channel);
+        RedisPS subscribe(String channel){
+            pscommands.subscribe(channel);
+            return this;
         }
 
         void publish(String channel, String msg){

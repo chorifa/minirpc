@@ -16,8 +16,8 @@ import com.chorifa.minirpc.invoker.type.FutureType;
 import com.chorifa.minirpc.invoker.type.InvokeCallBack;
 import com.chorifa.minirpc.invoker.type.SendType;
 import com.chorifa.minirpc.provider.DefaultRPCProviderFactory;
-import com.chorifa.minirpc.register.RegisterConfig;
-import com.chorifa.minirpc.register.RegisterType;
+import com.chorifa.minirpc.registry.RegistryConfig;
+import com.chorifa.minirpc.registry.RegistryType;
 import com.chorifa.minirpc.remoting.RemotingType;
 import com.chorifa.minirpc.utils.serialize.SerialType;
 import com.chorifa.minirpc.invoker.reference.ReferenceManagerBuilder;
@@ -39,10 +39,10 @@ public class AppTest
 
     @Test
     public void testProvider(){
-        RegisterConfig config = new RegisterConfig();
+        RegistryConfig config = new RegistryConfig();
         config.setRegisterAddress("redis://localhost:6379");
         DefaultRPCProviderFactory providerFactory = new DefaultRPCProviderFactory()
-                .init(RegisterType.REDIS, config ,8086)
+                .init(RegistryType.REDIS, config ,8086)
                 .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>())
                 .addService(TestService.class.getName(),null, new TestServiceImpl());
         providerFactory.start();
@@ -74,10 +74,10 @@ public class AppTest
 
     @Test
     public void testInvokerWithRegistry(){
-        RegisterConfig config = new RegisterConfig();
+        RegistryConfig config = new RegistryConfig();
         config.setRegisterAddress("redis://localhost:6379");
         config.setInvoker(true);
-        DefaultRPCInvokerFactory factory = new DefaultRPCInvokerFactory(RegisterType.REDIS,config);
+        DefaultRPCInvokerFactory factory = new DefaultRPCInvokerFactory(RegistryType.REDIS,config);
         factory.start();
         RPCReferenceManager manager = ReferenceManagerBuilder.init()
                 .forService(HelloService.class).applyInvokeFactory(factory).build();
@@ -156,10 +156,10 @@ public class AppTest
 
     @Test
     public void testInvoker(){
-        RegisterConfig config = new RegisterConfig();
+        RegistryConfig config = new RegistryConfig();
         config.setInvoker(true);
         config.setRegisterAddress("redis://localhost:6379");
-        DefaultRPCInvokerFactory invokerFactory = new DefaultRPCInvokerFactory(RegisterType.REDIS, config);
+        DefaultRPCInvokerFactory invokerFactory = new DefaultRPCInvokerFactory(RegistryType.REDIS, config);
         try{
             invokerFactory.start(); // start the register
             RPCReferenceManagerOld manager = new RPCReferenceManagerOld(TestService.class, null,

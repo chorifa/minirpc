@@ -6,7 +6,7 @@ import java.util.Iterator;
 import java.util.concurrent.locks.StampedLock;
 
 /**
- *  not that. iterator(also for...each) will not change order in LRU cache
+ * note that. iterator(also for...each) will not change order in LRU cache
  * @param <K>
  * @param <V>
  */

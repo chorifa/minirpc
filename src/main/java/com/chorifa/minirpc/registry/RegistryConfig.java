@@ -1,8 +1,8 @@
-package com.chorifa.minirpc.register;
+package com.chorifa.minirpc.registry;
 
 import javax.annotation.Nonnull;
 
-public class RegisterConfig {
+public class RegistryConfig {
 
     private String registerAddress = "localhost:2181";
 
@@ -17,7 +17,7 @@ public class RegisterConfig {
         return registerAddress;
     }
 
-    public RegisterConfig setRegisterAddress(@Nonnull String registerAddress) {
+    public RegistryConfig setRegisterAddress(@Nonnull String registerAddress) {
         this.registerAddress = registerAddress;
         return this;
     }
@@ -26,7 +26,7 @@ public class RegisterConfig {
         return envPrefix;
     }
 
-    public RegisterConfig setEnvPrefix(@Nonnull String envPrefix) {
+    public RegistryConfig setEnvPrefix(@Nonnull String envPrefix) {
         this.envPrefix = envPrefix;
         return this;
     }

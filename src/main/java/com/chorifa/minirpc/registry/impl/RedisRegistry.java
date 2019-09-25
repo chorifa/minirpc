@@ -1,4 +1,4 @@
-package com.chorifa.minirpc.register.impl;
+package com.chorifa.minirpc.registry.impl;
 
 import io.lettuce.core.*;
 import io.lettuce.core.api.StatefulRedisConnection;
@@ -6,8 +6,8 @@ import io.lettuce.core.api.sync.RedisCommands;
 import io.lettuce.core.pubsub.RedisPubSubListener;
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import io.lettuce.core.pubsub.api.sync.RedisPubSubCommands;
-import com.chorifa.minirpc.register.RegisterConfig;
-import com.chorifa.minirpc.register.RegisterService;
+import com.chorifa.minirpc.registry.RegistryConfig;
+import com.chorifa.minirpc.registry.RegistryService;
 import com.chorifa.minirpc.utils.RPCException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,9 +15,9 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.concurrent.*;
 
-public class RedisRegister implements RegisterService {
+public class RedisRegistry implements RegistryService {
 
-    private static final Logger logger = LoggerFactory.getLogger(RedisRegister.class);
+    private static final Logger logger = LoggerFactory.getLogger(RedisRegistry.class);
 
     private static final String BASE_HOME = "minirpc";
     private String prefix;
@@ -40,7 +40,7 @@ public class RedisRegister implements RegisterService {
      * @param config
      */
     @Override
-    public void start(RegisterConfig config) {
+    public void start(RegistryConfig config) {
         if(config == null) throw new RPCException("Register config cannot be null.");
 
         String redisURI = config.getRegisterAddress();
@@ -56,7 +56,7 @@ public class RedisRegister implements RegisterService {
                     logger.info("get msg. execute in pool.");
 
                     executor.execute(()->{
-                        Set<String> hostSet = RedisRegister.this.serviceMap.get(s); // ensure not null
+                        Set<String> hostSet = RedisRegistry.this.serviceMap.get(s); // ensure not null
                         if (hostSet == null) {
                             logger.error("RedisRegister: PubSub contains {}. But serviceMap do not. Which should not occur.", s);
                             Set<String> newSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -184,6 +184,7 @@ public class RedisRegister implements RegisterService {
         providerClient.scheduleMap.remove(key);
     }
 
+    // all subscribe use one command(connection), and repeat subscribe has no side-effect
     @Override
     public void subscribe(String key) {
         if(invokerClient == null)

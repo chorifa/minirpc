@@ -2,9 +2,9 @@ package com.chorifa.minirpc.invoker;
 
 import com.chorifa.minirpc.invoker.statistics.StatusStatistics;
 import com.chorifa.minirpc.invoker.type.InvokeCallBack;
-import com.chorifa.minirpc.register.RegisterConfig;
-import com.chorifa.minirpc.register.RegisterService;
-import com.chorifa.minirpc.register.RegisterType;
+import com.chorifa.minirpc.registry.RegistryConfig;
+import com.chorifa.minirpc.registry.RegistryService;
+import com.chorifa.minirpc.registry.RegistryType;
 import com.chorifa.minirpc.remoting.entity.RemotingFutureResponse;
 import com.chorifa.minirpc.remoting.entity.RemotingResponse;
 import com.chorifa.minirpc.utils.InnerCallBack;
@@ -23,8 +23,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class DefaultRPCInvokerFactory {
     private final static Logger logger = LoggerFactory.getLogger(DefaultRPCInvokerFactory.class);
 
-    private RegisterService register;
-    private RegisterConfig config;
+    private RegistryService register;
+    private RegistryConfig config;
     private BalanceMethod balanceMethod;
 
     private volatile boolean isRunning = false;
@@ -37,13 +37,13 @@ public class DefaultRPCInvokerFactory {
 
     public DefaultRPCInvokerFactory(){}
 
-    public DefaultRPCInvokerFactory(RegisterType registerType, RegisterConfig config){
-        this(registerType,config,LoadBalance.LEAST_UNREPLIED);
+    public DefaultRPCInvokerFactory(RegistryType registryType, RegistryConfig config){
+        this(registryType,config,LoadBalance.LEAST_UNREPLIED);
     }
 
-    public DefaultRPCInvokerFactory(RegisterType registerType, RegisterConfig config, LoadBalance loadBalance){
+    public DefaultRPCInvokerFactory(RegistryType registryType, RegistryConfig config, LoadBalance loadBalance){
 
-        if(registerType == null || registerType.getRegisterClass() == null)
+        if(registryType == null || registryType.getRegisterClass() == null)
             throw new RPCException("InvokerFactory: register type cannot be null...");
 
         if(config == null)
@@ -53,11 +53,11 @@ public class DefaultRPCInvokerFactory {
             throw new RPCException("InvokerFactory: loadBalance cannot be null...");
 
         try {
-            register = registerType.getRegisterClass().getDeclaredConstructor().newInstance();
+            register = registryType.getRegisterClass().getDeclaredConstructor().newInstance();
         }catch (Exception e){
             logger.error("InvokerFactory: new register failed... try again",e);
             try {
-                register = registerType.getRegisterClass().newInstance();
+                register = registryType.getRegisterClass().newInstance();
             }catch (Exception ex){
                 logger.error("InvokerFactory: new register failed...",ex);
                 throw new RPCException(ex);
@@ -69,7 +69,7 @@ public class DefaultRPCInvokerFactory {
         // TODO now --->>> void start()
     }
 
-    public RegisterService getRegister() {
+    public RegistryService getRegister() {
         return register;
     }
 

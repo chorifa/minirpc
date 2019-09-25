@@ -1,7 +1,7 @@
-package com.chorifa.minirpc.register.impl;
+package com.chorifa.minirpc.registry.impl;
 
-import com.chorifa.minirpc.register.RegisterConfig;
-import com.chorifa.minirpc.register.RegisterService;
+import com.chorifa.minirpc.registry.RegistryConfig;
+import com.chorifa.minirpc.registry.RegistryService;
 import com.chorifa.minirpc.utils.RPCException;
 import org.apache.curator.RetryPolicy;
 import org.apache.curator.framework.CuratorFramework;
@@ -23,8 +23,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class ZookeeperRegister implements RegisterService {
-    private static final Logger logger = LoggerFactory.getLogger(ZookeeperRegister.class);
+public class ZookeeperRegistry implements RegistryService {
+    private static final Logger logger = LoggerFactory.getLogger(ZookeeperRegistry.class);
 
     private static final String BASE_HOME = "minirpc";
     private CuratorFramework client;
@@ -36,7 +36,7 @@ public class ZookeeperRegister implements RegisterService {
 
     private volatile ExecutorService executor = null;
 
-    public ZookeeperRegister(){}
+    public ZookeeperRegistry(){}
 
     @Override
     public boolean isAvailable() {
@@ -44,7 +44,7 @@ public class ZookeeperRegister implements RegisterService {
     }
 
     @Override
-    public void start(RegisterConfig config) {
+    public void start(RegistryConfig config) {
         String zkHost = config.getRegisterAddress();
         this.workspace = BASE_HOME.concat("/").concat(config.getEnvPrefix());
 
@@ -154,7 +154,7 @@ public class ZookeeperRegister implements RegisterService {
                     String modPath = event.getData().getPath();
                     String[] tmp = modPath.split("/");
                     String modHost = tmp[tmp.length - 1];
-                    Set<String> hostSet = ZookeeperRegister.this.serviceMap.get(key); // ensure not null
+                    Set<String> hostSet = ZookeeperRegistry.this.serviceMap.get(key); // ensure not null
                     if (hostSet == null) {
                         logger.error("ZKRegister: childCacheMap contains {}. But serviceMap do not. Which should not occur.", key);
                         Set<String> newSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -211,7 +211,7 @@ public class ZookeeperRegister implements RegisterService {
         PathChildrenCache childCache = childCacheMap.remove(key); // stop refresh
         if(childCache != null){
             try {
-                serviceMap.remove(key); // delete cache
+                serviceMap.remove(key); // delete cache, really need?
                 childCache.getListenable().clear();
                 childCache.close();
             }catch (Exception e){

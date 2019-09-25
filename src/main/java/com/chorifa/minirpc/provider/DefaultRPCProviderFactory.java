@@ -1,8 +1,8 @@
 package com.chorifa.minirpc.provider;
 
-import com.chorifa.minirpc.register.RegisterConfig;
-import com.chorifa.minirpc.register.RegisterService;
-import com.chorifa.minirpc.register.RegisterType;
+import com.chorifa.minirpc.registry.RegistryConfig;
+import com.chorifa.minirpc.registry.RegistryService;
+import com.chorifa.minirpc.registry.RegistryType;
 import com.chorifa.minirpc.remoting.RemotingType;
 import com.chorifa.minirpc.remoting.Server;
 import com.chorifa.minirpc.remoting.entity.RemotingRequest;
@@ -35,15 +35,15 @@ public class DefaultRPCProviderFactory {
         return init("localhost",8086,remotingType,serialType,null,null);
     }
 
-    public DefaultRPCProviderFactory init(RegisterType registerType, RegisterConfig config, int port){
-        return init("localhost", port, RemotingType.NETTY, SerialType.HESSIAN, registerType,config);
+    public DefaultRPCProviderFactory init(RegistryType registryType, RegistryConfig config, int port){
+        return init("localhost", port, RemotingType.NETTY, SerialType.HESSIAN, registryType,config);
     }
 
     public DefaultRPCProviderFactory init(){
         return init("localhost",8086, RemotingType.NETTY, SerialType.HESSIAN, null,null);
     }
 
-    public DefaultRPCProviderFactory init(String ip, int port, RemotingType remotingType, SerialType serialType, RegisterType registerType, RegisterConfig config){
+    public DefaultRPCProviderFactory init(String ip, int port, RemotingType remotingType, SerialType serialType, RegistryType registryType, RegistryConfig config){
 
         // TODO check whether port is used && default ip
 
@@ -55,20 +55,20 @@ public class DefaultRPCProviderFactory {
             throw new RPCException("server: remoting type should not be null...");
         if(serialType == null || serialType.getSerializer() == null)
             throw new RPCException("server: serializer should not be null...");
-        if(registerType != null && config == null)
+        if(registryType != null && config == null)
             throw new RPCException("server: register config not specify...");
 
         this.ip = ip;
         this.port = port;
         this.remotingType = remotingType;
         this.serializer = serialType.getSerializer();
-        if(registerType != null && registerType.getRegisterClass() != null) {
+        if(registryType != null && registryType.getRegisterClass() != null) {
             try {
-                this.register = registerType.getRegisterClass().getDeclaredConstructor().newInstance();
+                this.register = registryType.getRegisterClass().getDeclaredConstructor().newInstance();
             } catch (Exception e) {
                 logger.error("create register failed... try again", e);
                 try {
-                    this.register = registerType.getRegisterClass().newInstance();
+                    this.register = registryType.getRegisterClass().newInstance();
                 } catch (IllegalAccessException | InstantiationException ex) {
                     logger.error("create register failed...", ex);
                     throw new RPCException(ex);
@@ -96,8 +96,8 @@ public class DefaultRPCProviderFactory {
     // --------------------------- server manager ---------------------------
     private Server server;
     private String address;
-    private RegisterService register;
-    private RegisterConfig config;
+    private RegistryService register;
+    private RegistryConfig config;
 
     public void start(){
         try {
