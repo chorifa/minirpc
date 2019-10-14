@@ -3,6 +3,7 @@ package com.chorifa.minirpc.invoker.reference;
 import com.chorifa.minirpc.invoker.statistics.StatusStatistics;
 import com.chorifa.minirpc.remoting.Client;
 import com.chorifa.minirpc.remoting.RemotingType;
+import com.chorifa.minirpc.remoting.entity.RemotingCompletableFuture;
 import com.chorifa.minirpc.remoting.entity.RemotingRequest;
 import com.chorifa.minirpc.invoker.DefaultRPCInvokerFactory;
 import com.chorifa.minirpc.invoker.type.FutureType;

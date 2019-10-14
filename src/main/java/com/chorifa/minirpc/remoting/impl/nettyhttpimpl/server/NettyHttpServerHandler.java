@@ -28,7 +28,7 @@ public class NettyHttpServerHandler extends SimpleChannelInboundHandler<FullHttp
 
     @Override
     protected void channelRead0(ChannelHandlerContext channelHandlerContext, FullHttpRequest request) throws Exception {
-        logger.info("Netty Http server receive a request...");
+        logger.debug("Netty Http server receive a request...");
         final byte[] data = ByteBufUtil.getBytes(request.content());
         final String uri = request.uri();
         final boolean isKeepAlive = HttpUtil.isKeepAlive(request);

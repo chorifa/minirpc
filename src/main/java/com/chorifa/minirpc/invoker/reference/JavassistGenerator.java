@@ -8,6 +8,34 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.Field;
 import java.util.*;
 
+/**
+ * before proxy :
+ *
+ * abstract class A{
+ *     void show();
+ *
+ *     String display();
+ * }
+ *
+ * after proxy :
+ *
+ * class AA extends A{
+ *
+ *     private CtMethod[] methods; // {show,display}
+ *
+ *     private InvocationHandlerForJavassist handler;
+ *
+ *     void show(){
+ *         this.handler.invoke(.. methods[0]..);
+ *     }
+ *
+ *     String display(){
+ *         return this.handler.invoke(.. methods[1]..);
+ *     }
+ *
+ * }
+ *
+ */
 class JavassistGenerator {
     private static final Logger logger = LoggerFactory.getLogger(JavassistGenerator.class);
 

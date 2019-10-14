@@ -8,7 +8,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-public class RemotingFutureResponse implements Future<RemotingResponse> {
+@Deprecated
+public class RemotingFutureResponse implements Future<RemotingResponse>, RemotingInject<RemotingResponse>{
 
     private RemotingRequest request;
     private RemotingResponse response;
@@ -23,7 +24,7 @@ public class RemotingFutureResponse implements Future<RemotingResponse> {
         return callBack;
     }
 
-    public void setCallBack(InvokeCallBack callBack) {
+    public void setCallBack(InvokeCallBack<?> callBack) {
         this.callBack = callBack;
     }
 
@@ -53,7 +54,7 @@ public class RemotingFutureResponse implements Future<RemotingResponse> {
     }
 
     // ------------------------------ put and get ------------------------------
-    public boolean set(RemotingResponse response){
+    public boolean complete(RemotingResponse response){
         if(done) return false;
         synchronized (lock){
             this.response = response;

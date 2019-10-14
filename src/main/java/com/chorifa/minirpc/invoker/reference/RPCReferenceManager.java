@@ -1,15 +1,15 @@
 package com.chorifa.minirpc.invoker.reference;
 
+import com.chorifa.minirpc.invoker.type.RemotingFutureAdaptor;
 import com.chorifa.minirpc.remoting.Client;
 import com.chorifa.minirpc.remoting.RemotingType;
+import com.chorifa.minirpc.remoting.entity.RemotingCompletableFuture;
 import com.chorifa.minirpc.remoting.entity.RemotingRequest;
 import com.chorifa.minirpc.invoker.DefaultRPCInvokerFactory;
 import com.chorifa.minirpc.invoker.statistics.StatusStatistics;
-import com.chorifa.minirpc.invoker.type.FutureType;
 import com.chorifa.minirpc.invoker.type.InvokeCallBack;
 import com.chorifa.minirpc.invoker.type.SendType;
 import com.chorifa.minirpc.registry.RegistryService;
-import com.chorifa.minirpc.remoting.entity.RemotingFutureResponse;
 import com.chorifa.minirpc.remoting.entity.RemotingResponse;
 import com.chorifa.minirpc.utils.RPCException;
 import com.chorifa.minirpc.utils.StreamID4Http2Util;
@@ -105,7 +105,7 @@ public class RPCReferenceManager {
                 String methodName = method.getName();
                 String interfaceName = serviceClass.getName();
                 Class<?>[] parameterType = method.getParameterTypes();
-                Class<?> returnType = method.getReturnType();
+                //Class<?> returnType = method.getReturnType();
 
                 // TODO not find >>> retry
                 String finalAddress = this.address;
@@ -140,7 +140,7 @@ public class RPCReferenceManager {
                 // send
                 switch (sendType) {
                     case SYNC: {
-                        RemotingFutureResponse futureResponse = new RemotingFutureResponse(request);
+                        RemotingCompletableFuture futureResponse = new RemotingCompletableFuture(request);
                         invokerFactory.putFutureResponse(request.getRequestId(), futureResponse);
                         RemotingResponse response = null;
                         try {
@@ -166,11 +166,11 @@ public class RPCReferenceManager {
                         return response.getResult();
                     }
                     case FUTURE: {
-                        RemotingFutureResponse futureResponse = new RemotingFutureResponse(request);
+                        RemotingCompletableFuture futureResponse = new RemotingCompletableFuture(request);
                         invokerFactory.putFutureResponse(request.getRequestId(), futureResponse);
-                        FutureType<?> futureType = FutureType.generateFuture(returnType,futureResponse,invokerFactory);
+                        RemotingFutureAdaptor<?> futureAdaptor = RemotingFutureAdaptor.generateFuture(futureResponse, invokerFactory);
                         try {
-                            FutureType.setFuture(futureType);
+                            RemotingFutureAdaptor.setFuture(futureAdaptor);
                             //statistics
                             StatusStatistics.startCount(finalAddress,methodName);
 
@@ -188,7 +188,7 @@ public class RPCReferenceManager {
                     case CALLBACK: {
                         if(callBack == null)
                             throw new RPCException("Invoker: call back function should not be null...");
-                        RemotingFutureResponse futureResponse = new RemotingFutureResponse(request);
+                        RemotingCompletableFuture futureResponse = new RemotingCompletableFuture(request);
                         futureResponse.setCallBack(callBack);
                         invokerFactory.putFutureResponse(request.getRequestId(), futureResponse);
                         try{
@@ -220,7 +220,7 @@ public class RPCReferenceManager {
                 String methodName = method.getName();
                 String interfaceName = serviceClass.getName();
                 Class<?>[] parameterType = JavassistGenerator.findClassViaCtClass(method.getParameterTypes());
-                Class<?> returnType = JavassistGenerator.findClassViaCtClass(method.getReturnType());
+//                Class<?> returnType = JavassistGenerator.findClassViaCtClass(method.getReturnType());
 
                 // TODO not find >>> retry
                 String finalAddress = this.address;
@@ -255,7 +255,7 @@ public class RPCReferenceManager {
                 // send
                 switch (sendType) {
                     case SYNC: {
-                        RemotingFutureResponse futureResponse = new RemotingFutureResponse(request);
+                        RemotingCompletableFuture futureResponse = new RemotingCompletableFuture(request);
                         invokerFactory.putFutureResponse(request.getRequestId(), futureResponse);
                         RemotingResponse response = null;
                         try {
@@ -281,11 +281,11 @@ public class RPCReferenceManager {
                         return response.getResult();
                     }
                     case FUTURE: {
-                        RemotingFutureResponse futureResponse = new RemotingFutureResponse(request);
+                        RemotingCompletableFuture futureResponse = new RemotingCompletableFuture(request);
                         invokerFactory.putFutureResponse(request.getRequestId(), futureResponse);
-                        FutureType<?> futureType = FutureType.generateFuture(returnType,futureResponse,invokerFactory);
+                        RemotingFutureAdaptor<?> futureAdaptor = RemotingFutureAdaptor.generateFuture(futureResponse,invokerFactory);
                         try {
-                            FutureType.setFuture(futureType);
+                            RemotingFutureAdaptor.setFuture(futureAdaptor);
                             //statistics
                             StatusStatistics.startCount(finalAddress,methodName);
 
@@ -303,7 +303,7 @@ public class RPCReferenceManager {
                     case CALLBACK: {
                         if(callBack == null)
                             throw new RPCException("Invoker: call back function should not be null...");
-                        RemotingFutureResponse futureResponse = new RemotingFutureResponse(request);
+                        RemotingCompletableFuture futureResponse = new RemotingCompletableFuture(request);
                         futureResponse.setCallBack(callBack);
                         invokerFactory.putFutureResponse(request.getRequestId(), futureResponse);
                         try{

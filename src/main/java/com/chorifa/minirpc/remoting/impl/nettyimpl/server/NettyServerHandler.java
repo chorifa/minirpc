@@ -26,7 +26,7 @@ class NettyServerHandler extends SimpleChannelInboundHandler<RemotingRequest> {
 
     @Override
     protected void channelRead0(ChannelHandlerContext channelHandlerContext, RemotingRequest request){
-        logger.info("Netty server receive a request...");
+        logger.debug("Netty server receive a request...");
         //provider.invoke >>> writeAndFlush(Response)
         try {
             executorService.execute(() -> {

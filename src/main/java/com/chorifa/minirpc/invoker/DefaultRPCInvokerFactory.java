@@ -5,7 +5,7 @@ import com.chorifa.minirpc.invoker.type.InvokeCallBack;
 import com.chorifa.minirpc.registry.RegistryConfig;
 import com.chorifa.minirpc.registry.RegistryService;
 import com.chorifa.minirpc.registry.RegistryType;
-import com.chorifa.minirpc.remoting.entity.RemotingFutureResponse;
+import com.chorifa.minirpc.remoting.entity.RemotingInject;
 import com.chorifa.minirpc.remoting.entity.RemotingResponse;
 import com.chorifa.minirpc.utils.InnerCallBack;
 import com.chorifa.minirpc.utils.RPCException;
@@ -118,9 +118,9 @@ public class DefaultRPCInvokerFactory {
     }
 
     // --------------------------- future map ---------------------------
-    private ConcurrentHashMap<String /*ID*/, RemotingFutureResponse> futureResponseMap = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<String /*ID*/, RemotingInject<RemotingResponse>> futureResponseMap = new ConcurrentHashMap<>();
 
-    public void putFutureResponse(String id, RemotingFutureResponse futureResponse){
+    public void putFutureResponse(String id, RemotingInject<RemotingResponse> futureResponse){
         futureResponseMap.put(id,futureResponse);
     }
 
@@ -130,7 +130,7 @@ public class DefaultRPCInvokerFactory {
 
     @SuppressWarnings("unchecked")
     public void injectResponse(String id, RemotingResponse response){
-        RemotingFutureResponse futureResponse = futureResponseMap.get(id);
+        RemotingInject<RemotingResponse> futureResponse = futureResponseMap.remove(id);
         if(futureResponse == null)
             throw new RPCException("InvokerFactory: futureResponseMap do not have such futureResponse: id = "+id);
         InvokeCallBack callBack = futureResponse.getCallBack();
@@ -160,10 +160,10 @@ public class DefaultRPCInvokerFactory {
                 }
 
             });
-        }else if(!futureResponse.set(response)) // future and sync
+        }else if(!futureResponse.complete(response)) // future and sync
             throw new RPCException("set response in future failed...");
 
-        futureResponseMap.remove(id);
+        //futureResponseMap.remove(id);
     }
 
     // --------------------------- execute pool for callBack ---------------------------

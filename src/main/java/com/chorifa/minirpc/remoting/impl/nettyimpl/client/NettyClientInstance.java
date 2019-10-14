@@ -79,6 +79,6 @@ public class NettyClientInstance extends ClientInstance {
     protected void send(RemotingRequest request) throws Exception{
         this.channel.writeAndFlush(request);
 
-        logger.info("client --->>> server  send request: {}.",request.toString());
+        logger.debug("client --->>> server  send request: {}.",request.toString());
     }
 }

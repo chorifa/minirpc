@@ -14,6 +14,7 @@ import com.chorifa.minirpc.invoker.reference.RPCReferenceManager;
 import com.chorifa.minirpc.invoker.reference.RPCReferenceManagerOld;
 import com.chorifa.minirpc.invoker.type.FutureType;
 import com.chorifa.minirpc.invoker.type.InvokeCallBack;
+import com.chorifa.minirpc.invoker.type.RemotingFutureAdaptor;
 import com.chorifa.minirpc.invoker.type.SendType;
 import com.chorifa.minirpc.provider.DefaultRPCProviderFactory;
 import com.chorifa.minirpc.registry.RegistryConfig;
@@ -25,6 +26,8 @@ import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
@@ -70,6 +73,70 @@ public class AppTest
             providerFactory.stop();
         }
 
+    }
+
+    @Test
+    public void testInvokerNewCallBack() throws ExecutionException, InterruptedException {
+        RPCReferenceManager manager = ReferenceManagerBuilder.init()
+                .applySendType(SendType.CALLBACK)
+                .forService(TestService.class).forAddress("localhost:8086").build();
+        manager.setCallBack(new InvokeCallBack<Object>() {
+            @Override
+            public void onSuccess(Object result) throws Exception {
+                System.out.println(result);
+            }
+
+            @Override
+            public void onException(Throwable t) throws Exception {
+                t.printStackTrace();
+            }
+        });
+        TestService<UserDO> service = manager.get();
+        NageDO nageDO = new NageDO();
+        nageDO.age=10; nageDO.name="jiecheng Chong";
+        List<String> likes = new ArrayList<>();
+        likes.add("apple");
+        likes.add("egg");
+        service.show(nageDO, likes);
+        UserDO userDO = new UserDO();
+        userDO.like = likes;
+        userDO.age = 19;
+        userDO.name = "jieCheng Chong";
+        service.echo(userDO);
+        try {
+            TimeUnit.SECONDS.sleep(5);
+        }catch (InterruptedException e){
+            e.printStackTrace();
+        }finally {
+            manager.getInvokerFactory().stop();
+        }
+    }
+
+    @Test
+    public void testInvokerCompletableFuture() throws ExecutionException, InterruptedException {
+        RPCReferenceManager manager = ReferenceManagerBuilder.init()
+                .applySendType(SendType.FUTURE)
+                .forService(TestService.class).forAddress("localhost:8086").build();
+        TestService<UserDO> service = manager.get();
+        NageDO nageDO = new NageDO();
+        nageDO.age=10; nageDO.name="jiecheng Chong";
+        List<String> likes = new ArrayList<>();
+        likes.add("apple");
+        likes.add("egg");
+        service.show(nageDO, likes);
+        CompletableFuture<UserDO> cf = RemotingFutureAdaptor.getCompletableFuture();
+        UserDO userDO = cf.get();
+        System.out.println(userDO);
+        userDO = service.echo(userDO);
+        cf = RemotingFutureAdaptor.getCompletableFuture();
+        System.out.println(cf.get());
+        try {
+            TimeUnit.SECONDS.sleep(5);
+        }catch (InterruptedException e){
+            e.printStackTrace();
+        }finally {
+            manager.getInvokerFactory().stop();
+        }
     }
 
     @Test

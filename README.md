@@ -12,6 +12,15 @@ Features
 - Offer diverse serial approaches, including Protostuff, Hessian, JSON, etc.   
 - Support proxy for interface(default, jdk-impl) and class(javassist-impl)
 
+Performance Test
+-----------------------------------------------------------
+Description: one producer(thread) along with one invoker(thread). Invoker continuously invokes simple echo service(1kB data size) 100000(10w) times. Both MiniRPC and Dubbo use Hessian2 serialization.
+| **Time Consumption** | **MiniRPC** | **Dubbo** |
+|:------------------------------:|:-----------:|:---------:|
+| Sync \(Request after Response\) | 16611ms     | 21899ms   |
+| Async \(Future\)               | 4460ms      | 5218ms    |
+
+
 #### Note:  
 - the remoting module refers to [xuxueli/xxl-rpc](https://github.com/xuxueli/xxl-rpc)  
 - load-balance methods refer to [dubbo](https://github.com/apache/dubbo)  

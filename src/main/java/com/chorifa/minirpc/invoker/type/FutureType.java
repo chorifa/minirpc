@@ -10,10 +10,12 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+@Deprecated
 public class FutureType<T> implements Future<T> {
 
     private RemotingFutureResponse futureResponse;
-    private DefaultRPCInvokerFactory invokerFactory; // patch --->>> when futureResponse.get() has RPCException , future pool may still hold future response
+    // patch --->>> when futureResponse.get() has RPCException , future pool may still hold future response
+    private DefaultRPCInvokerFactory invokerFactory;
 
     private FutureType(RemotingFutureResponse futureResponse, DefaultRPCInvokerFactory invokerFactory) {
         this.futureResponse = futureResponse;
@@ -36,7 +38,6 @@ public class FutureType<T> implements Future<T> {
     }
 
     @Override
-
     public T get() throws InterruptedException, ExecutionException {
         RemotingResponse response;
         try {
@@ -69,7 +70,7 @@ public class FutureType<T> implements Future<T> {
     }
 
     // ---------------------------------------- out api ----------------------------------------
-    public static <T> FutureType<T> generateFuture(Class<T> clazz,RemotingFutureResponse futureResponse, DefaultRPCInvokerFactory invokerFactory){
+    public static <T> FutureType<T> generateFuture(Class<T> clazz, RemotingFutureResponse futureResponse, DefaultRPCInvokerFactory invokerFactory){
         return new FutureType<T>(futureResponse,invokerFactory);
     }
 
@@ -78,7 +79,6 @@ public class FutureType<T> implements Future<T> {
     public static <T> void setFuture(FutureType<T> future){
         currentFuture.set(future);
     }
-
 
     public static <T> FutureType<T> getFuture(){
         @SuppressWarnings("unchecked")

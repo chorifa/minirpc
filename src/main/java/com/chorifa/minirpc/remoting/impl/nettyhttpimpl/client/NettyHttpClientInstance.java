@@ -97,6 +97,6 @@ public class NettyHttpClientInstance extends ClientInstance {
         httpRequest.headers().set(HttpHeaderNames.CONTENT_LENGTH, httpRequest.content().readableBytes());
 
         this.channel.writeAndFlush(httpRequest);
-        logger.info("client --->>> server  send request: {}.",request.toString());
+        logger.debug("client --->>> server  send request: {}.",request.toString());
     }
 }
