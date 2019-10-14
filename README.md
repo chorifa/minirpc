@@ -15,6 +15,7 @@ Features
 Performance Test
 -----------------------------------------------------------
 Description: one producer(thread) along with one invoker(thread). Invoker continuously invokes simple echo service(1kB data size) 100000(10w) times. Both MiniRPC and Dubbo use Hessian2 serialization.
+
 | **Time Consumption** | **MiniRPC** | **Dubbo** |
 |:------------------------------:|:-----------:|:---------:|
 | Sync \(Request after Response\) | 16611ms     | 21899ms   |
