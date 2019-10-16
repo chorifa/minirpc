@@ -1,0 +1,43 @@
+## Introduction
+该RPC框架主要完成提供者Provider的服务发布，调用者Invoker的远程过程调用以及注册中心的服务发现功能。总的来说使用Netty完成Invoker和Provider的通信，支持TCP/Http1.1/Http2的通信方式。使用Zookeeper或者Redis作为注册中心。实现了随机，一致性Hash，LFU，LRU，最少活跃调用的客户端负载均衡。对接口使用JDK代理，对抽象类使用javassist代理。Invoker调用远程方法时可选Sync同步，Future或是CallBack方式的异步调用。    
+
+## 架构总结
+miniRPC分为4个大部分，其中invoker包代表了服务调用方，provider包代表了服务提供方，registry包包含了注册中心，remoting包抽象了NIO通信的行为。    
+
+### Invoker
+- invoker包下最重要的是RPCReferenceManager类和DefaultRPCInvokerFactory类。前者ReferenceManager功能上类似于Dubbo中的ReferenceConfig类，设置想要调用的interface类，设置注册中心或者服务提供者地址，调用方式等参数，通过get()方法拿到代理类。如果是interface就是用JDK的Proxy.newProxyInstance()创建代理;如果是抽象类就使用Javassit以抽象类为模板创建新的类，和interface类似也会生成一个InvocationHandler作为代理类的字段，每个abstract方法实际是调用Handler的invoke方法，另外将每个abstract方法的CtMethod保存为数组元素作为新的Class的methods字段，其中的CtMethod作为Handler的参数。这里Dubbo是完全创建了一个新的类，所以代理类中的methods字段可以是JDK的Method类型，Handler就是JDK的InvocationHandler。但是我写的时候为了简单是用Javassist的ClassPool.getAndRename()在抽象类上修改的，因此拿不到对应JDK的Method对象，只能拿到Javassist的CtMethod对象，所以InvocationHandler接口是另外定义的。        
+- DefaultRPCInvokerFactory中维护一个结果Map，key为某次请求的ID，value为一个带有callBack的Future结构。前边说过的Handler中每次调用远程功能时（发送请求前），都会预先在该map内创建id-Future对; invoker接收到回信后，NIO线程会根据Future是否存在CallBack字段，执行CallBack方法或是将response注入对应的Future中，并将该id-Future对从map中删除。    
+
+### Provider
+provider做的事情要简单一点，DefaultRPCProviderFactory定义了serviceMap和invokeService方法，启动前通过addService方法将支持的service name - service Object存放到这个map中，启动时向注册中心注册并且启动通信Server。Server接收到请求后会通过反射调用该对象的该方法运行服务。   
+
+### Remoting
+- Remoting包抽象了Invoker和Provider的NIO通信行为。Provider使用ServerBootstrap创建ServerChannel对端口进行监听。Invoker对同一个地址使用单一长连接，和Dubbo默认的方式保持一致。根据Dubbo官方的说法，一个地址做单一长连接适合少量多次的调用方式，比较适合RPC的场景。    
+- 其中抽象类ClientInstance是长连接的对应实体，内部有个静态的Map作为连接池，每次发送request时先根据address取得对应的连接实体ClientInstance，如果没有就新建一个连接。作为连接池的map有一个对应的lockMap，同样是address作为key，lockMap的元素一旦创建不允许更改。新建连接时会先拿到address对应lockMap中的对象作为对象锁，然后double-check没有连接时再创建新的连接。    
+- 利用Netty实现了TCPSocket,HTTP1.1,以及HTTP2三种方式。请求统一定义为RemotingRequest类，回复为RemotingResponse类。发送时将request或response序列化作为发送bytes，接收方再反序列化。实现了Hessian2、ProtoStuff、Json的序列化方式，默认Hessian2和Dubbo一致。    
+- 解决TCP方式的半包粘包问题可以使用Netty提供的基于特定分隔符的帧解码器或是长度域解码器，我是在写入bytes前再写入一个int表示本次数据长度，读取时根据这个第一个可读int来决定读多少byte，由于TCP保证了可靠性，因此这么做就可以分隔各个帧了。HTTP1.1协议的Encoder/Decoder使用了Netty的HttpServerCodec/HttpClientCodec。HTTP2是按照官方example的方式编写，分为SSL协商h2为HTTP2和HTTP明文升级h2c两种。    
+
+### Registry
+- 使用Zookeeper或者Redis实现了简单服务发现功能。     
+- ZookeeperRegistry使用Curator作为客户端。内部维护一个serviceMap和registerMap。Provider当register一个服务时，将Service的name作为父节点path，address作为子节点path，创建一个临时节点。Invoker创建某个服务的代理类时会提前订阅一个服务，创建PathChildrenCache，监控service-name对应的父路径，通过设置listener在回调函数中对hosts进行增改删。在真实调用发送请求前会从serviceMap中拿到所有的address，由于使用监听回调，所以存在一定的延时，如果没有拿到address，则会主动的查询一次。serviceMap起到一个客户端缓存的作用，即使registry暴毙，也可以提供有限的服务。    
+- RedisRegistry使用Lettuce作为客户端，主要依靠Pub/Sub功能。在redis中每个service-name对应一个zset的hashkey，address作为value，当前时间作为score。同时service-name也是Pub/Sub的一个topic。Provider注册一个服务时，通过zadd将address和当前时间写入zset中，同时publish一条信息。反注册一个服务时就在zset中删除，也publish一条信息。另外，Provider有定时任务每隔一段时间刷新zset中value的score。Invoker订阅一个服务就是subscribe一个topic，在listener中进行hosts的增删改。使用zset设置当前时间为score的目的在于，也许Provider突然死亡，没能下线。reids服务器侧单独起一个任务，每隔一段时间扫描这些用于服务发现的zset，清除过期value并且publish消息提醒订阅者。    
+- 对服务发现而言，强一致性不是那么重要，最严重的结果就是流量不均匀以及可能失败重试；相对的，可用性反而更加重要，不应该因为服务中心的局部错误造成整体的不可用。Zookeeper是CP系统：如果集群中出现了网络分割故障(如交换机故障导致其下的子网不能互相访问)，若分区中的节点达不到选举leader的法定人数，ZK会将其剔除，外界就不能访问这些节点，无论其是否正常工作，此时不再提供写操作，到达这些节点的写操作被丢弃了。(似乎client只需要填写一个server地址，如果这个节点挂了可能得自己做另外的重连cp)。Redis集群由于每个分片slot的Node节点采用了master-slave结构，牺牲了一部分强一致性保证了可用性。所以ZK其实不是很适合用来做注册中心。   
+#### LoadBalance
+- Invoker在拿到某个service的host的list之后会负载均衡选择一个来发送请求。随机选择就是使用ThreadLocalRandom随机选择一个。一致性Hash和最少活跃调用是学习了Dubbo的实现。    
+- 一致性Hash常用于缓存，效果是多个节点按Hash映射到一个圆环上，每个请求按自己的Hash顺时针找到最近的节点，假如有个A节点挂了，那只是所有原先到A节点的请求需要重定位，其余节点不受影响。为了缓解节点映射到圆环上不均匀的数据倾斜问题，常使用虚拟节点，如每个物理节点按照相同的方法生成40个虚拟节点映射到圆环上。代码中使用TreeMap作为容器也就是这个圆环的作用，和Dubbo一样默认每个节点使用160个虚拟节点。每个service对应有一个一致性Hash选择器。先看看list的hashcode和以前计算过的这个service是否一致，不一致则说明有节点改动，需要重新生成TreeMap。对每个String类型的address分别加上0-39的后缀，计算出16B的md5值，再对这个16字节的数组分4组每组4B计算Hash值，作为key放入TreeMap中，每个address生成了160个虚拟节点。当要选择其中一个节点时，默认按照调用方法的第一个参数的hash选择TreeMap中第一个大于等于这个Hash的节点。    
+- 最少活跃调用则是基于统计信息，统计成功了多少次，失败了多少次，目前还没回复的有多少次。每次发送请求给对应的尚未回复+1，当接收到对应回复给它-1并根据成功还是失败分别给成功数+1或是失败数+1。每个address的尚未回复数可以表征这个provider的繁忙程度，每次挑选尚未回复数最小的那个provider发送请求。也可以加权成功数和失败数。    
+- 我还实现了LRU和LFU，为了保证LRU和LFU精确性，需要对操作做大的同步操作。同时为了防止内存占用过大，选择时LFU中若存放的数据个数大于有效的address个数的1.5倍，就将无效的address从LFU-Map中删除。LRU中不仅使用LinkedHashMap存放address还用Hashmap存放上次使用的时间，每次选择时，从LinkedHashMap头结点开始，如果节点不在待选的list中并且上次使用的时间距离现在超过threshold了，就把他删除。由于做了大的同步操作，因此耗时较高，不是很适合。    
+
+
+### Question Prediction
+- Javassit代理和JDK代理区别？和CGlib比较起来效率呢？
+    
+- TCP3次握手4次挥手，拥塞控制， HTTP1.1和HTTP2区别(HTTP2特性)， HTTP2协商过程
+
+- Netty的线程模型，bind()操作的流程，write()flush()流程，内存分配管理
+
+- Zookeeper集群运作原理，Redis集群运作原理如何保证可用性，Redis的Pub/Sub功能如何实现
+
+- LoadBalance方法的适用场景
+
+- 测试过RPC的运行速度吗

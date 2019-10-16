@@ -57,7 +57,7 @@ public class NettyHttp2Server extends Server {
                             .build();
                 }else sslCtx = null;
 
-                bossGroup = new NioEventLoopGroup();
+                bossGroup = new NioEventLoopGroup(1);
                 workGroup = new NioEventLoopGroup();
 
                 ServerBootstrap sbs = new ServerBootstrap();

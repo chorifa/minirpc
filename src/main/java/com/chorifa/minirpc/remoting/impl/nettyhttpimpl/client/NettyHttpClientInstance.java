@@ -9,8 +9,6 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.http.*;
@@ -26,7 +24,7 @@ public class NettyHttpClientInstance extends ClientInstance {
     private static Logger logger = LoggerFactory.getLogger(NettyHttpClientInstance.class);
 
     private Channel channel;
-    private EventLoopGroup group;
+    // private EventLoopGroup group;
     private Serializer serializer;
     private String address;
     private String host;
@@ -44,10 +42,8 @@ public class NettyHttpClientInstance extends ClientInstance {
         int port = url.getPort();
         if(port <= 0) port = 80;
 
-        group = new NioEventLoopGroup();
-
         Bootstrap bs = new Bootstrap();
-        bs.group(group).channel(NioSocketChannel.class)
+        bs.group(ClientInstance.group).channel(NioSocketChannel.class)
                 .option(ChannelOption.SO_KEEPALIVE,true)
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override
@@ -79,7 +75,8 @@ public class NettyHttpClientInstance extends ClientInstance {
     @Override
     protected void close() {
         if(this.channel != null) this.channel.close();
-        group.shutdownGracefully();
+        // can only close channel. cannot shut down group
+        // group.shutdownGracefully();
 
         logger.info("client --->>> server  close channel.");
     }

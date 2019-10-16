@@ -35,7 +35,8 @@ public class DefaultRPCInvokerFactory {
         return DEFAULT_INSTANCE;
     }
 
-    public DefaultRPCInvokerFactory(){}
+    // if we do not need registry. start directly.
+    public DefaultRPCInvokerFactory(){ start(); }
 
     public DefaultRPCInvokerFactory(RegistryType registryType, RegistryConfig config){
         this(registryType,config,LoadBalance.LEAST_UNREPLIED);

@@ -5,6 +5,8 @@ import com.chorifa.minirpc.remoting.entity.RemotingRequest;
 import com.chorifa.minirpc.invoker.DefaultRPCInvokerFactory;
 import com.chorifa.minirpc.utils.RPCException;
 import com.chorifa.minirpc.utils.serialize.Serializer;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,13 +14,24 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public abstract class ClientInstance {
 
-    private final static Logger logger = LoggerFactory.getLogger(ClientInstance.class);
+    private static final Logger logger = LoggerFactory.getLogger(ClientInstance.class);
+
+    // all in one EventLoopGroup
+    protected static final EventLoopGroup group = new NioEventLoopGroup();
+    static {
+        // add hook to shut down EventLoopGroup
+        Runtime.getRuntime().addShutdownHook(new Thread(()->{
+            group.shutdownGracefully().syncUninterruptibly();
+            logger.info("EventLoopGroup shut down by Hook.");
+        }));
+    }
 
     protected DefaultRPCInvokerFactory invokerFactory;
     // -------------------    abstract method    -------------------
 
     protected abstract boolean isValid();
 
+    // TODO only shot down channel. when to shot down EventLoopGroup?
     protected abstract void close();
 
     protected abstract void init(String address, Serializer serializer) throws Exception;
@@ -54,6 +67,8 @@ public abstract class ClientInstance {
                             }
                         }*/
                         connectionPool.clear();
+                        // can shut down here?
+                        // group.shutdownGracefully();
                     });
                 }
             }

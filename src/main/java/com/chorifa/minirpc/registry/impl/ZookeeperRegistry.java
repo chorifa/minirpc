@@ -54,7 +54,7 @@ public class ZookeeperRegistry implements RegistryService {
                 .namespace(workspace)
                 .build();
         client.start();
-        logger.info("ZKRegister: zookeeper client started...");
+        logger.info("ZKRegistry: zookeeper client started...");
     }
 
     @Override
@@ -67,7 +67,7 @@ public class ZookeeperRegistry implements RegistryService {
             executor.shutdown();
         if(client != null)
             client.close();
-        logger.info("ZKRegister: zookeeper client stopped...");
+        logger.info("ZKRegistry: zookeeper client stopped...");
     }
 
     @Override
@@ -77,18 +77,18 @@ public class ZookeeperRegistry implements RegistryService {
         String nodePath = "/".concat(key).concat("/").concat(data);
 
         if (checkNodeExists(nodePath) != null)
-            throw new RPCException("ZKRegister: register node already exists...");
+            throw new RPCException("ZKRegistry: register node already exists...");
         try {
             client.create().creatingParentsIfNeeded()
                     .withMode(CreateMode.EPHEMERAL)
                     .withACL(ZooDefs.Ids.OPEN_ACL_UNSAFE)
-                    .forPath(nodePath, ("ZKRegister: server: " + data + " -->> register...").getBytes(StandardCharsets.UTF_8));
+                    .forPath(nodePath, ("ZKRegistry: server: " + data + " -->> register...").getBytes(StandardCharsets.UTF_8));
             registerMap.put(key,data);
         }catch (Exception e){
-            logger.error("ZKRegister: zookeeper encounter one Exception when create a node...",e);
+            logger.error("ZKRegistry: zookeeper encounter one Exception when create a node...",e);
             throw new RPCException(e);
         }
-        logger.info("ZKRegister: zookeeper register a service[ name= {}, address= {} ] done... ",key,data);
+        logger.info("ZKRegistry: zookeeper register a service[ name= {}, address= {} ] done... ",key,data);
     }
 
     /**
@@ -100,14 +100,14 @@ public class ZookeeperRegistry implements RegistryService {
         Stat state = null;
         String addr = registerMap.get(key);
         if(addr == null){
-            logger.info("ZKRegister: server have not register such service...");
+            logger.info("ZKRegistry: server have not register such service {}...", key);
             return;
         }
         String nodePath = "/".concat(key).concat("/").concat(addr);
 
         if((state = checkNodeExists(nodePath)) == null) {
-            logger.error("ZKRegister: node do not exist... but server has registered such service[name= {}].",key);
-            throw new RPCException("ZKRegister: node do not exist... but server has registered such service.");
+            logger.error("ZKRegistry: node do not exist... but server has registered such service[name= {}].",key);
+            throw new RPCException("ZKRegistry: node do not exist... but server has registered such service.");
         }
 
         try {
@@ -116,9 +116,9 @@ public class ZookeeperRegistry implements RegistryService {
                     .withVersion(state.getVersion())
                     .forPath(nodePath);
             registerMap.remove(key);
-            logger.info("ZKRegister: unsubscribe service[name= {}]",key);
+            logger.info("ZKRegistry: unsubscribe service[name= {}]",key);
         }catch (Exception e){
-            logger.error("ZKRegister: zookeeper encounter one exception when delete one node[path= {}]...",nodePath,e);
+            logger.error("ZKRegistry: zookeeper encounter one exception when delete one node[path= {}]...",nodePath,e);
         }
     }
 
@@ -131,8 +131,8 @@ public class ZookeeperRegistry implements RegistryService {
         String nodePath = "/".concat(key);
 
         if(checkNodeExists(nodePath) == null){
-            logger.error("ZKRegister: nodePath={} not exists...",nodePath);
-            throw new RPCException("ZKRegister: nodePath not exists...");
+            logger.error("ZKRegistry: nodePath={} not exists...",nodePath);
+            throw new RPCException("ZKRegistry: nodePath not exists...");
         }
 
         PathChildrenCache childCache = childCacheMap.get(key);
@@ -156,7 +156,7 @@ public class ZookeeperRegistry implements RegistryService {
                     String modHost = tmp[tmp.length - 1];
                     Set<String> hostSet = ZookeeperRegistry.this.serviceMap.get(key); // ensure not null
                     if (hostSet == null) {
-                        logger.error("ZKRegister: childCacheMap contains {}. But serviceMap do not. Which should not occur.", key);
+                        logger.error("ZKRegistry: childCacheMap contains {}. But serviceMap do not. Which should not occur.", key);
                         Set<String> newSet = Collections.newSetFromMap(new ConcurrentHashMap<>());
                         hostSet = serviceMap.putIfAbsent(key, newSet);
                         if (hostSet == null)
@@ -164,22 +164,22 @@ public class ZookeeperRegistry implements RegistryService {
                     }
                     switch (event.getType()) {
                         case CHILD_ADDED:
-                            logger.info("ZKRegister: add child node: { path = " + modPath +/*", data = "+new String(event.getData().getData())+*/" }");
+                            logger.info("ZKRegistry: add child node: { path = " + modPath +/*", data = "+new String(event.getData().getData())+*/" }");
                             if (!hostSet.add(modHost))
-                                logger.debug("ZKRegister: child node add. But local map already contains. ");
+                                logger.debug("ZKRegistry: child node add. But local map already contains. ");
                             break;
                         case CHILD_UPDATED:
-                            logger.info("ZKRegister: update child node: { path = " + modPath +/*", new data = "+new String(event.getData().getData())+*/" }");
+                            logger.info("ZKRegistry: update child node: { path = " + modPath +/*", new data = "+new String(event.getData().getData())+*/" }");
                             if (hostSet.add(modHost))
-                                logger.debug("ZKRegister: child node update. But local map do not contain. ");
+                                logger.debug("ZKRegistry: child node update. But local map do not contain. ");
                             break;
                         case CHILD_REMOVED:
-                            logger.info("ZKRegister: remove child node: { path = " + modPath +/*", raw data = "+new String(event.getData().getData())+*/" }");
+                            logger.info("ZKRegistry: remove child node: { path = " + modPath +/*", raw data = "+new String(event.getData().getData())+*/" }");
                             if (!hostSet.remove(modHost))
-                                logger.debug("ZKRegister: child node remove. But local map do not contain. ");
+                                logger.debug("ZKRegistry: child node remove. But local map do not contain. ");
                             break;
                         default:
-                            logger.info("ZKRegister: other event: " + event.getType());
+                            logger.info("ZKRegistry: other event: " + event.getType());
                     }
                 }
             }, this.executor);
@@ -187,14 +187,14 @@ public class ZookeeperRegistry implements RegistryService {
             try {
                 childCacheMap.put(key,childCache);
                 childCache.start(PathChildrenCache.StartMode.NORMAL);
-                logger.info("ZKRegister: start childCache... subscribe {} done",key);
+                logger.info("ZKRegistry: start childCache... subscribe {} done",key);
             }catch (Exception e){
-                logger.error("ZKRegister: encounter one exception when childCache start...");
+                logger.error("ZKRegistry: encounter one exception when childCache start...");
                 childCacheMap.remove(key);
                 throw new RPCException(e);
             }
 
-        }else logger.info("ZKRegister: already subscribe such service: {}",key);
+        }else logger.info("ZKRegistry: already subscribe such service: {}",key);
 
         // BUILD_INITIAL_CACHE同步模式下
         // 先start再添加listener的话，原来已经有的数据加入到cache中，不会触发listener
@@ -215,10 +215,10 @@ public class ZookeeperRegistry implements RegistryService {
                 childCache.getListenable().clear();
                 childCache.close();
             }catch (Exception e){
-                logger.error("ZKRegister: encounter one exception when childCache close...");
+                logger.error("ZKRegistry: encounter one exception when childCache close...");
                 throw new RPCException(e);
             }
-        }else logger.info("ZKRegister: have not yet subscribe such service [name= {}]",key);
+        }else logger.info("ZKRegistry: have not yet subscribe such service [name= {}]",key);
     }
 
     /**
@@ -230,7 +230,7 @@ public class ZookeeperRegistry implements RegistryService {
     public List<String> discovery(String key) {
         Set<String> hosts = serviceMap.get(key);
         if(hosts == null)
-            throw new RPCException("ZKRegister: invoker have not yet subscribe such service >>> name = "+key);
+            throw new RPCException("ZKRegistry: invoker have not yet subscribe such service >>> name = "+key);
         /*
         if(hosts.isEmpty())
             inquireRefresh(key);
@@ -251,20 +251,20 @@ public class ZookeeperRegistry implements RegistryService {
         try {
             TimeUnit.SECONDS.sleep(1);
         } catch (InterruptedException e) {
-            logger.error("ZKRegister: sleep encounter interrupt...",e);
+            logger.error("ZKRegistry: sleep encounter interrupt...",e);
         }
     }
 
     private List<String> inquire(String key){
         String nodePath = "/".concat(key);
         if(checkNodeExists(nodePath) == null){
-            logger.error("ZKRegister: nodePath={} not exists...",nodePath);
-            throw new RPCException("ZKRegister: nodePath not exists...");
+            logger.error("ZKRegistry: nodePath={} not exists...",nodePath);
+            throw new RPCException("ZKRegistry: nodePath not exists...");
         }
         try{
             return client.getChildren().forPath(nodePath);
         }catch (Exception e){
-            logger.error("ZKRegister: inquire nodePath={} for refresh encounter one exception...",nodePath);
+            logger.error("ZKRegistry: inquire nodePath={} for refresh encounter one exception...",nodePath);
             return null;
         }
     }
@@ -273,8 +273,8 @@ public class ZookeeperRegistry implements RegistryService {
     public List<String> inquireRefresh(String key){
         String nodePath = "/".concat(key);
         if(checkNodeExists(nodePath) == null){
-            logger.error("ZKRegister: nodePath={} not exists...",nodePath);
-            throw new RPCException("ZKRegister: nodePath not exists...");
+            logger.error("ZKRegistry: nodePath={} not exists...",nodePath);
+            throw new RPCException("ZKRegistry: nodePath not exists...");
         }
         try {
             List<String> hosts = client.getChildren().forPath(nodePath);
@@ -288,7 +288,7 @@ public class ZookeeperRegistry implements RegistryService {
             }
             return hosts;
         }catch (Exception e){
-            logger.error("ZKRegister: inquire nodePath={} for refresh encounter one exception...",nodePath);
+            logger.error("ZKRegistry: inquire nodePath={} for refresh encounter one exception...",nodePath);
         }
         return null;
     }
@@ -297,7 +297,7 @@ public class ZookeeperRegistry implements RegistryService {
         try {
             return client.checkExists().forPath(nodePath);
         }catch (Exception e){
-            logger.error("zookeeper encounter one Exception when check exits a node...",e);
+            logger.error("ZKRegistry: zookeeper encounter one Exception when check exits a node...",e);
             throw new RPCException(e);
         }
     }

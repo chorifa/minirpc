@@ -143,13 +143,13 @@ public class RedisRegistry implements RegistryService {
             executor.shutdown();
         if(schedule != null && !schedule.isShutdown())
             schedule.shutdown();
-        logger.info("RedisRegister: redis client stopped...");
+        logger.info("RedisRegistry: redis client stopped...");
     }
 
     @Override
     public void register(String key, String data) {
         if(providerClient == null)
-            throw new RPCException("RedisRegister: client try to register. but provider client is null...");
+            throw new RPCException("RedisRegistry: client try to register. but provider client is null...");
 
         // data =def= server address
         String zsetKey = prefix.concat("/").concat(key);
@@ -160,17 +160,17 @@ public class RedisRegistry implements RegistryService {
                 ()-> providerClient.commands.zadd(zsetKey,new ZAddArgs().xx(),System.currentTimeMillis(),data),
                 providerClient.refreshPeriod,providerClient.refreshPeriod, TimeUnit.MILLISECONDS);
         providerClient.scheduleMap.put(key,future); // save for cancel >>> unregister
-        logger.info("RedisRegister: register >> service={}, address={} << done.",key,data);
+        logger.info("RedisRegistry: register >> service={}, address={} << done.",key,data);
     }
 
     @Override
     public void unregister(String key) {
         if(providerClient == null)
-            throw new RPCException("RedisRegister: client try to unregister. but provider client is null...");
+            throw new RPCException("RedisRegistry: client try to unregister. but provider client is null...");
 
         String addr = providerClient.registerMap.get(key);
         if(addr == null){
-            logger.warn("RedisRegister: server have not register such service...");
+            logger.warn("RedisRegistry: server have not register such service...");
             return;
         }
         String zsetKey = prefix.concat("/").concat(key);
@@ -179,7 +179,7 @@ public class RedisRegistry implements RegistryService {
         providerClient.commands.publish(key,"unregister:".concat(addr)); // notify invoker
         ScheduledFuture<?> future = providerClient.scheduleMap.get(key); // get future for cancel
         if(future == null)
-            logger.warn("RedisRegister: unregister service= {}. but no schedule future found, which should not occur",key);
+            logger.warn("RedisRegistry: unregister service= {}. but no schedule future found, which should not occur",key);
         else future.cancel(false); // end future
         providerClient.scheduleMap.remove(key);
     }
@@ -188,7 +188,7 @@ public class RedisRegistry implements RegistryService {
     @Override
     public void subscribe(String key) {
         if(invokerClient == null)
-            throw new RPCException("RedisRegister: client try to subscribe. but invoker client is null...");
+            throw new RPCException("RedisRegistry: client try to subscribe. but invoker client is null...");
         serviceMap.putIfAbsent(key, Collections.newSetFromMap(new ConcurrentHashMap<>()));
         invokerClient.pscommands.subscribe(key);
     }
@@ -196,7 +196,7 @@ public class RedisRegistry implements RegistryService {
     @Override
     public void unsubscribe(String key) {
         if(invokerClient == null)
-            throw new RPCException("RedisRegister: client try to unsubscribe. but invoker client is null...");
+            throw new RPCException("RedisRegistry: client try to unsubscribe. but invoker client is null...");
         invokerClient.pscommands.unsubscribe(key);
         // clear the cache
         serviceMap.remove(key);
@@ -206,7 +206,7 @@ public class RedisRegistry implements RegistryService {
     public List<String> discovery(String key) {
         Set<String> hosts = serviceMap.get(key);
         if(hosts == null)
-            throw new RPCException("ZKRegister: invoker have not yet subscribe such service >>> name = "+key);
+            throw new RPCException("RedisRegistry: invoker have not yet subscribe such service >>> name = "+key);
 
         if(hosts.isEmpty()){
             return inquireRefresh(key); // refresh and inquire

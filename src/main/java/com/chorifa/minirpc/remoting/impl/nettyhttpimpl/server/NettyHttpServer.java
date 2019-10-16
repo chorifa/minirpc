@@ -33,7 +33,7 @@ public class NettyHttpServer extends Server {
             final ExecutorService executorService = Executors.newFixedThreadPool(100,
                     (r) -> new Thread(r, "rpc-Netty Http Server-execPool: " + r.hashCode()));
 
-            EventLoopGroup bossGroup = new NioEventLoopGroup();
+            EventLoopGroup bossGroup = new NioEventLoopGroup(1);
             EventLoopGroup workGroup = new NioEventLoopGroup();
             try {
                 ServerBootstrap sbs = new ServerBootstrap();

@@ -10,8 +10,6 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.http.*;
 import io.netty.handler.codec.http2.Http2SecurityUtil;
@@ -30,7 +28,7 @@ public class NettyHttp2ClientInstance extends ClientInstance {
     private static final boolean useSSL = OpenSsl.isAlpnSupported() | RuntimeUtil.JDK_VERSION >= 9;
 
     private Channel channel;
-    private EventLoopGroup group;
+    //private EventLoopGroup group;
     private Serializer serializer;
     private String address;
     private String host;
@@ -58,11 +56,10 @@ public class NettyHttp2ClientInstance extends ClientInstance {
                     .build();
         }else sslCtx = null;
 
-        group = new NioEventLoopGroup();
         NettyHttp2ClientInitializer initializer = new NettyHttp2ClientInitializer(sslCtx,Integer.MAX_VALUE,invokerFactory,serializer);
 
         Bootstrap bs = new Bootstrap();
-        bs.group(group);
+        bs.group(ClientInstance.group);
         bs.channel(NioSocketChannel.class);
         bs.option(ChannelOption.SO_KEEPALIVE,true);
         bs.remoteAddress(host,port);
@@ -100,7 +97,8 @@ public class NettyHttp2ClientInstance extends ClientInstance {
         if(this.channel != null)
             this.channel.close(); // note that: "close" will actively close the channel;
             // while, channel.closeFuture().sync() will start a sub-thread listener wait for channel is shutdown.
-        group.shutdownGracefully();
+        // cannot close group. can only close channel
+        //group.shutdownGracefully();
 
         logger.info("client --->>> server  close channel.");
     }

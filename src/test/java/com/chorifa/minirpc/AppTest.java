@@ -41,6 +41,77 @@ public class AppTest
      */
 
     @Test
+    public void testMultiProvider(){
+        DefaultRPCProviderFactory providerFactory1 = new DefaultRPCProviderFactory().init(RemotingType.NETTY, SerialType.HESSIAN, 8081)
+                .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>())
+                .addService(TestService.class.getName(),null, new TestServiceImpl<String>());
+        DefaultRPCProviderFactory providerFactory2 = new DefaultRPCProviderFactory().init(RemotingType.NETTY, SerialType.HESSIAN, 8082)
+                .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>())
+                .addService(TestService.class.getName(),null, new TestServiceImpl<String>());
+        DefaultRPCProviderFactory providerFactory3 = new DefaultRPCProviderFactory().init(RemotingType.NETTY, SerialType.HESSIAN, 8083)
+                .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>())
+                .addService(TestService.class.getName(),null, new TestServiceImpl<String>());
+        providerFactory1.start();
+        providerFactory2.start();
+        providerFactory3.start();
+        try{
+            TimeUnit.MINUTES.sleep(1);
+        }catch (Exception e){
+            e.printStackTrace();
+        }finally {
+            providerFactory1.stop();
+            providerFactory2.stop();
+            providerFactory3.stop();
+        }
+    }
+
+    @Test
+    public void testMultiInvoker() throws ExecutionException, InterruptedException {
+        RPCReferenceManager manager1 = ReferenceManagerBuilder.init()
+                .applySendType(SendType.FUTURE)
+                .forService(TestService.class).forAddress("localhost:8081").build();
+        RPCReferenceManager manager2 = ReferenceManagerBuilder.init()
+                .applySendType(SendType.FUTURE)
+                .forService(TestService.class).forAddress("localhost:8082").build();
+        RPCReferenceManager manager3 = ReferenceManagerBuilder.init()
+                .applySendType(SendType.FUTURE)
+                .forService(TestService.class).forAddress("localhost:8083").build();
+
+        TestService<UserDO> service1 = manager1.get();
+        TestService<UserDO> service2 = manager2.get();
+        TestService<UserDO> service3 = manager3.get();
+
+        NageDO nageDO = new NageDO();
+        nageDO.age=10; nageDO.name="jiecheng Chong";
+        List<String> likes = new ArrayList<>();
+        likes.add("apple");
+        likes.add("egg");
+
+        service1.show(nageDO, likes);
+        CompletableFuture<UserDO> cf1 = RemotingFutureAdaptor.getCompletableFuture();
+
+        service2.show(nageDO, likes);
+        CompletableFuture<UserDO> cf2 = RemotingFutureAdaptor.getCompletableFuture();
+
+        service3.show(nageDO, likes);
+        CompletableFuture<UserDO> cf3 = RemotingFutureAdaptor.getCompletableFuture();
+
+        UserDO userDO1 = cf1.get();
+        UserDO userDO2 = cf2.get();
+        UserDO userDO3 = cf3.get();
+        System.out.println(userDO1);
+        System.out.println(userDO2);
+        System.out.println(userDO3);
+        try {
+            TimeUnit.SECONDS.sleep(5);
+        }catch (InterruptedException e){
+            e.printStackTrace();
+        }finally {
+            manager1.getInvokerFactory().stop();
+        }
+    }
+
+    @Test
     public void testProvider(){
         RegistryConfig config = new RegistryConfig();
         config.setRegisterAddress("redis://localhost:6379");

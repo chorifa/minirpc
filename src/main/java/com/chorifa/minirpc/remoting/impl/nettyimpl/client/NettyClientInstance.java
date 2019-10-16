@@ -11,8 +11,6 @@ import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.timeout.IdleStateHandler;
@@ -26,18 +24,17 @@ public class NettyClientInstance extends ClientInstance {
     private static Logger logger = LoggerFactory.getLogger(NettyClientInstance.class);
 
     private Channel channel;
-    private EventLoopGroup group;
+    //private EventLoopGroup group;
 
     @Override
     protected void init(String address, Serializer serializer) throws Exception {
-        group = new NioEventLoopGroup();
         Object[] objs = AddressUtil.parseAddress(address);
         String ip = (String)objs[0];
         int port = (int)objs[1];
         objs = null;
 
         Bootstrap bs = new Bootstrap();
-        bs.group(group).channel(NioSocketChannel.class)
+        bs.group(ClientInstance.group).channel(NioSocketChannel.class)
                        .option(ChannelOption.TCP_NODELAY,true)
                        .option(ChannelOption.SO_KEEPALIVE,true)
                        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS,10000)
@@ -70,9 +67,9 @@ public class NettyClientInstance extends ClientInstance {
     @Override
     protected void close() {
         if(this.channel != null) this.channel.close();
-        group.shutdownGracefully();
-
-        logger.info("client --->>> server  close channel.");
+        // cannot shot down group
+        //group.shutdownGracefully();
+        logger.info("client --->>> server  close.");
     }
 
     @Override

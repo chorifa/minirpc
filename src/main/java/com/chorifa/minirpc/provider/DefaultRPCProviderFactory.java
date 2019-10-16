@@ -31,6 +31,10 @@ public class DefaultRPCProviderFactory {
         return init("localhost",8086, RemotingType.NETTY, serialType,null,null);
     }
 
+    public DefaultRPCProviderFactory init(RemotingType remotingType, SerialType serialType, int port){
+        return init("localhost",port,remotingType,serialType,null,null);
+    }
+
     public DefaultRPCProviderFactory init(RemotingType remotingType, SerialType serialType){
         return init("localhost",8086,remotingType,serialType,null,null);
     }
