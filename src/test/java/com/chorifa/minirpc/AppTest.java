@@ -72,7 +72,7 @@ public class AppTest
                 .forService(TestService.class).forAddress("localhost:8081").build();
         RPCReferenceManager manager2 = ReferenceManagerBuilder.init()
                 .applySendType(SendType.FUTURE)
-                .forService(TestService.class).forAddress("localhost:8082").build();
+                .forService(TestService.class).forAddress("localhost:8081").build();
         RPCReferenceManager manager3 = ReferenceManagerBuilder.init()
                 .applySendType(SendType.FUTURE)
                 .forService(TestService.class).forAddress("localhost:8083").build();

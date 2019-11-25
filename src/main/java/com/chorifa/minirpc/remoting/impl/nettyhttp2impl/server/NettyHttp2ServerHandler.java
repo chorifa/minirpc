@@ -12,6 +12,7 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http2.*;
+import io.netty.handler.timeout.IdleStateEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,4 +108,14 @@ public class NettyHttp2ServerHandler extends ChannelDuplexHandler {
         ctx.flush();
     }
 
+    @Override
+    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+        if(evt instanceof IdleStateEvent){
+            logger.info("a connect closed >>>---<<< IdleStateEvent");
+            ctx.channel().close();
+            // ctx.channel.close function in all pipeline handler
+            // ctx.close function in current and next pipeline handler
+        }
+        else super.userEventTriggered(ctx, evt);
+    }
 }
