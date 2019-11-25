@@ -3,7 +3,9 @@ package com.chorifa.minirpc.remoting.impl.nettyhttp2impl.client;
 import com.chorifa.minirpc.invoker.DefaultRPCInvokerFactory;
 import com.chorifa.minirpc.remoting.entity.RemotingResponse;
 import com.chorifa.minirpc.utils.RPCException;
+import com.chorifa.minirpc.utils.serialize.SerialType;
 import com.chorifa.minirpc.utils.serialize.Serializer;
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -16,11 +18,9 @@ public class NettyHttp2ClientHandler extends SimpleChannelInboundHandler<FullHtt
     private static final Logger logger = LoggerFactory.getLogger(NettyHttp2ClientHandler.class);
 
     private final DefaultRPCInvokerFactory invokerFactory;
-    private final Serializer serializer;
 
-    NettyHttp2ClientHandler(DefaultRPCInvokerFactory factory, Serializer serializer){
+    NettyHttp2ClientHandler(DefaultRPCInvokerFactory factory){
         this.invokerFactory = factory;
-        this.serializer = serializer;
     }
 
     @Override
@@ -30,9 +30,14 @@ public class NettyHttp2ClientHandler extends SimpleChannelInboundHandler<FullHtt
             logger.error("HttpResponseHandler unexpected message received: " + msg);
             return;
         }
-        byte[] data = ByteBufUtil.getBytes(msg.content());
-        if(data == null || data.length == 0)
+        ByteBuf byteBuf = msg.content();
+        if(byteBuf == null || byteBuf.readableBytes() <= 4)
             throw new RPCException("NettyHttp2Client: decode data is null...");
+
+        int magic = byteBuf.readInt();
+        byte[] data = new byte[byteBuf.readableBytes()];
+        byteBuf.readBytes(data);
+        final Serializer serializer = SerialType.getSerializerByMagic(magic);
 
         RemotingResponse response = serializer.deserialize(data, RemotingResponse.class);
         invokerFactory.injectResponse(String.valueOf(streamId),response);

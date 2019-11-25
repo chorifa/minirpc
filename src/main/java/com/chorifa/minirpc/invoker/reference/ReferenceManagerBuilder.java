@@ -12,7 +12,7 @@ import org.slf4j.LoggerFactory;
 public class ReferenceManagerBuilder {
 	private static final Logger logger = LoggerFactory.getLogger(ReferenceManagerBuilder.class);
 
-	private Serializer serializer;
+	private SerialType serialType;
 
 	private Class<?> serviceClass;
 	private String version;
@@ -34,8 +34,8 @@ public class ReferenceManagerBuilder {
 	public RPCReferenceManager build (){
 		if(serviceClass == null)
 			throw new RPCException("origin service can not be null...");
-		if(serializer == null){
-			serializer = SerialType.HESSIAN.getSerializer();
+		if(serialType == null){
+			serialType = SerialType.HESSIAN;
 			logger.warn("serializer not specify. using HESSIAN as default.");
 		}
 		if(sendType == null){
@@ -56,7 +56,7 @@ public class ReferenceManagerBuilder {
 	// set
 	public ReferenceManagerBuilder applySerializer(SerialType serialType){
 		if(serialType != null)
-			this.serializer = serialType.getSerializer();
+			this.serialType = serialType;
 		return this;
 	}
 
@@ -91,8 +91,8 @@ public class ReferenceManagerBuilder {
 		return this;
 	}
 
-	Serializer getSerializer() {
-		return serializer;
+	SerialType getSerialType() {
+		return serialType;
 	}
 
 	Class<?> getServiceClass() {

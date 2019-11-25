@@ -4,6 +4,8 @@ import com.chorifa.minirpc.provider.DefaultRPCProviderFactory;
 import com.chorifa.minirpc.remoting.entity.RemotingRequest;
 import com.chorifa.minirpc.remoting.entity.RemotingResponse;
 import com.chorifa.minirpc.utils.RPCException;
+import com.chorifa.minirpc.utils.serialize.SerialType;
+import com.chorifa.minirpc.utils.serialize.Serializer;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import io.netty.buffer.Unpooled;
@@ -12,7 +14,6 @@ import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.codec.http2.*;
-import io.netty.handler.timeout.IdleStateEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,13 +56,13 @@ public class NettyHttp2ServerHandler extends ChannelDuplexHandler {
 
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
-        logger.info("using http2 handler... read request and send response done.");
+        logger.debug("using http2 handler... read request and send response done.");
     }
 
     private void onHeaderRead(ChannelHandlerContext ctx, Http2HeadersFrame headers){
         // actually not support
         if(headers.isEndStream()){ // get request
-            logger.info("Netty Http2 server receive a get request...");
+            logger.debug("Netty Http2 server receive a get request...");
             // return a warn
             ByteBuf content = ctx.alloc().buffer();
             content.writeBytes(WARN_WORDS.duplicate());
@@ -73,27 +74,38 @@ public class NettyHttp2ServerHandler extends ChannelDuplexHandler {
 
     private void onDataRead(ChannelHandlerContext ctx, Http2DataFrame data) {
         if(data.isEndStream()){
-            logger.info("Netty Http2 server receive a post request...");
-            final byte[] bytes = ByteBufUtil.getBytes(data.content());
-            if(bytes == null || bytes.length == 0)
+            logger.debug("Netty Http2 server receive a post request...");
+            ByteBuf byteBuf = data.content();
+            if(byteBuf == null || byteBuf.readableBytes() <= 4)
                 throw new RPCException("NettyHttp2Server decode data is null...");
 
-            RemotingRequest remotingRequest = factory.getSerializer().deserialize(bytes,RemotingRequest.class);
+            final int magic = byteBuf.readInt();
+            final Serializer serializer = SerialType.getSerializerByMagic(magic);
+
+            byte[] bytes = new byte[byteBuf.readableBytes()];
+            byteBuf.readBytes(bytes);
+
+            RemotingRequest remotingRequest = serializer.deserialize(bytes, RemotingRequest.class);
             try{
                 service.execute(()->{
                     RemotingResponse response = factory.invokeService(remotingRequest); // will not throw exception and always return response
-                    byte[] rpsBytes = factory.getSerializer().serialize(response); // may have runtime exception
-                    ByteBuf payload = Unpooled.wrappedBuffer(rpsBytes);
+                    byte[] rpsBytes = serializer.serialize(response); // may have runtime exception
+                    ByteBuf payload = Unpooled.buffer(rpsBytes.length +4);
+                    payload.writeInt(magic);
+                    payload.writeBytes(rpsBytes);
 
-                    sendResponse(ctx,payload);
+                    sendResponse(ctx, payload);
                 });
             }catch (Throwable e){ // ExecutorService exception : rejection
                 logger.error("Netty Http Server encounter one error when handling the request...",e);
                 RemotingResponse response = new RemotingResponse();
                 response.setRequestId(remotingRequest.getRequestId());
                 response.setErrorMsg(e.getMessage());
-                byte[] rpsBytes = factory.getSerializer().serialize(response); // may have runtime exception
-                ByteBuf payload = Unpooled.wrappedBuffer(rpsBytes);
+
+                byte[] rpsBytes = serializer.serialize(response); // may have runtime exception
+                ByteBuf payload = Unpooled.buffer(rpsBytes.length +4);
+                payload.writeInt(magic);
+                payload.writeBytes(rpsBytes);
 
                 sendResponse(ctx,payload);
             }
@@ -108,14 +120,4 @@ public class NettyHttp2ServerHandler extends ChannelDuplexHandler {
         ctx.flush();
     }
 
-    @Override
-    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
-        if(evt instanceof IdleStateEvent){
-            logger.info("a connect closed >>>---<<< IdleStateEvent");
-            ctx.channel().close();
-            // ctx.channel.close function in all pipeline handler
-            // ctx.close function in current and next pipeline handler
-        }
-        else super.userEventTriggered(ctx, evt);
-    }
 }

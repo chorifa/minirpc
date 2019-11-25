@@ -1,6 +1,7 @@
 package com.chorifa.minirpc.remoting.impl.nettyhttpimpl.client;
 
-import io.netty.buffer.ByteBufUtil;
+import com.chorifa.minirpc.utils.serialize.SerialType;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.FullHttpResponse;
@@ -16,21 +17,23 @@ public class NettyHttpClientHandler extends SimpleChannelInboundHandler<FullHttp
     private static final Logger logger = LoggerFactory.getLogger(NettyHttpClientHandler.class);
 
     private DefaultRPCInvokerFactory invokerFactory;
-    private Serializer serializer;
 
-    NettyHttpClientHandler(DefaultRPCInvokerFactory invokerFactory, Serializer serializer){
+    NettyHttpClientHandler(DefaultRPCInvokerFactory invokerFactory){
         this.invokerFactory = invokerFactory;
-        this.serializer = serializer;
     }
 
     @Override
     protected void channelRead0(ChannelHandlerContext channelHandlerContext, FullHttpResponse fullHttpResponse) throws Exception {
-        byte[] data = ByteBufUtil.getBytes(fullHttpResponse.content());
-        if(data == null || data.length == 0)
+        ByteBuf byteBuf = fullHttpResponse.content();
+        if(byteBuf == null || byteBuf.readableBytes() <= 4)
             throw new RPCException("NettyHttp decode data is null...");
 
-        RemotingResponse response = serializer.deserialize(data, RemotingResponse.class);
+        int magic = byteBuf.readInt();
+        byte[] data = new byte[byteBuf.readableBytes()];
+        byteBuf.readBytes(data);
+        final Serializer serializer = SerialType.getSerializerByMagic(magic);
 
+        RemotingResponse response = serializer.deserialize(data, RemotingResponse.class);
         invokerFactory.injectResponse(response.getRequestId(),response);
     }
 

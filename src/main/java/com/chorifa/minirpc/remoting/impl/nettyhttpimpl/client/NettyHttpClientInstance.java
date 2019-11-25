@@ -3,8 +3,9 @@ package com.chorifa.minirpc.remoting.impl.nettyhttpimpl.client;
 import com.chorifa.minirpc.remoting.ClientInstance;
 import com.chorifa.minirpc.remoting.entity.RemotingRequest;
 import com.chorifa.minirpc.utils.RPCException;
-import com.chorifa.minirpc.utils.serialize.Serializer;
+import com.chorifa.minirpc.utils.serialize.SerialType;
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
@@ -25,12 +26,11 @@ public class NettyHttpClientInstance extends ClientInstance {
 
     private Channel channel;
     // private EventLoopGroup group;
-    private Serializer serializer;
     private String address;
     private String host;
 
     @Override
-    protected void init(String address, final Serializer serializer) throws Exception {
+    protected void init(String address) throws Exception {
 
         if (!address.toLowerCase().startsWith("http")) {
             address = "http://" + address;	// IP:PORT, need parse to url
@@ -51,12 +51,11 @@ public class NettyHttpClientInstance extends ClientInstance {
                         socketChannel.pipeline().addLast(new IdleStateHandler(0,0,10, TimeUnit.MINUTES))
                                 .addLast(new HttpClientCodec())
                                 .addLast(new HttpObjectAggregator(1024*1024))
-                                .addLast(new NettyHttpClientHandler(invokerFactory,serializer));
+                                .addLast(new NettyHttpClientHandler(invokerFactory));
                     }
                 });
 
-        this.serializer = serializer;
-        this.channel = bs.connect(host,port).sync().channel();
+        this.channel = bs.connect(host, port).sync().channel();
 
         if(!isValid()){
             close();
@@ -82,13 +81,17 @@ public class NettyHttpClientInstance extends ClientInstance {
     }
 
     @Override
-    protected void send(RemotingRequest request) throws Exception {
+    protected void send(RemotingRequest request, SerialType serialType) throws Exception {
         if(request == null)
             throw new RPCException("NettyHttpClint send null request...");
 
-        byte[] data = serializer.serialize(request);
+        byte[] data = serialType.getSerializer().serialize(request);
+        ByteBuf byteBuf = Unpooled.buffer(data.length +4);
+        int magic = serialType.getMagic();
+        byteBuf.writeInt(magic);
+        byteBuf.writeBytes(data);
 
-        FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1,HttpMethod.POST,new URI(address).getRawPath(), Unpooled.wrappedBuffer(data));
+        FullHttpRequest httpRequest = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, new URI(address).getRawPath(), byteBuf);
         httpRequest.headers().set(HttpHeaderNames.HOST, host);
         httpRequest.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
         httpRequest.headers().set(HttpHeaderNames.CONTENT_LENGTH, httpRequest.content().readableBytes());

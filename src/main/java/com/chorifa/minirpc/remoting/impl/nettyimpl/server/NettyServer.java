@@ -3,7 +3,6 @@ package com.chorifa.minirpc.remoting.impl.nettyimpl.server;
 import com.chorifa.minirpc.provider.DefaultRPCProviderFactory;
 import com.chorifa.minirpc.remoting.Server;
 import com.chorifa.minirpc.remoting.entity.RemotingRequest;
-import com.chorifa.minirpc.remoting.entity.RemotingResponse;
 import com.chorifa.minirpc.remoting.impl.nettyimpl.codec.NettyDecoder;
 import com.chorifa.minirpc.remoting.impl.nettyimpl.codec.NettyEncoder;
 import io.netty.bootstrap.ServerBootstrap;
@@ -37,7 +36,7 @@ public class NettyServer extends Server {
             EventLoopGroup workGroup = new NioEventLoopGroup();
             try{
                 ServerBootstrap sbs = new ServerBootstrap();
-                sbs.group(bossGroup,workGroup).channel(NioServerSocketChannel.class)
+                sbs.group(bossGroup, workGroup).channel(NioServerSocketChannel.class)
                         .option(ChannelOption.SO_BACKLOG,1024)
                         .childOption(ChannelOption.TCP_NODELAY,true)
                         .childOption(ChannelOption.SO_KEEPALIVE,true)
@@ -46,14 +45,14 @@ public class NettyServer extends Server {
                             protected void initChannel(SocketChannel socketChannel) throws Exception {
                                 socketChannel.pipeline()
                                         .addLast(new IdleStateHandler(0,0,10, TimeUnit.MINUTES))
-                                        .addLast(new NettyDecoder(RemotingRequest.class,providerFactory.getSerializer()))
-                                        .addLast(new NettyEncoder(RemotingResponse.class,providerFactory.getSerializer()))
-                                        .addLast(new NettyServerHandler(providerFactory,executorService));
+                                        .addLast(new NettyDecoder(RemotingRequest.class))
+                                        .addLast(new NettyEncoder())
+                                        .addLast(new NettyServerHandler(providerFactory, executorService));
                             }
                         });
                 ChannelFuture channelFuture = sbs.bind(providerFactory.getPort()).sync();
 
-                logger.info("NettyServer bind port:[{}] succeed",providerFactory.getPort());
+                logger.info("NettyServer bind port:[{}] succeed", providerFactory.getPort());
                 beforeStart(); // start call back
 
                 channelFuture.channel().closeFuture().sync();

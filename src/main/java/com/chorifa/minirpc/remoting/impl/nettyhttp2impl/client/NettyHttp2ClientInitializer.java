@@ -28,13 +28,11 @@ public class NettyHttp2ClientInitializer extends ChannelInitializer<SocketChanne
     private Http2SettingsHandler settingsHandler;
 
     private final DefaultRPCInvokerFactory factory;
-    private final Serializer serializer;
 
-    NettyHttp2ClientInitializer(SslContext sslContext, int maxContentLength, DefaultRPCInvokerFactory factory, Serializer serializer) {
+    NettyHttp2ClientInitializer(SslContext sslContext, int maxContentLength, DefaultRPCInvokerFactory factory) {
         this.sslContext = sslContext;
         this.maxContentLength = maxContentLength;
         this.factory = factory;
-        this.serializer = serializer;
     }
 
     @Override
@@ -50,7 +48,7 @@ public class NettyHttp2ClientInitializer extends ChannelInitializer<SocketChanne
                 .frameLogger(logger)
                 .connection(connection)
                 .build();
-        this.http2ClientHandler = new NettyHttp2ClientHandler(factory,serializer);
+        this.http2ClientHandler = new NettyHttp2ClientHandler(factory);
         settingsHandler = new Http2SettingsHandler(socketChannel.newPromise());
         if(sslContext != null){
             configureSsl(socketChannel);

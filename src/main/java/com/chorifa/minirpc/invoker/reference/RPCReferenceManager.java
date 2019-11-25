@@ -14,7 +14,7 @@ import com.chorifa.minirpc.remoting.entity.RemotingResponse;
 import com.chorifa.minirpc.utils.RPCException;
 import com.chorifa.minirpc.utils.StreamID4Http2Util;
 import com.chorifa.minirpc.utils.loadbalance.SelectOptions;
-import com.chorifa.minirpc.utils.serialize.Serializer;
+import com.chorifa.minirpc.utils.serialize.SerialType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 public class RPCReferenceManager {
     private final static Logger logger = LoggerFactory.getLogger(RPCReferenceManager.class);
 
-    private Serializer serializer;
+    private SerialType serialType;
 
     private Class<?> serviceClass;
     private String version;
@@ -42,7 +42,7 @@ public class RPCReferenceManager {
     private InvokeCallBack<?> callBack;
 
     RPCReferenceManager(ReferenceManagerBuilder builder){
-        this.serializer = builder.getSerializer();
+        this.serialType = builder.getSerialType();
         this.version = builder.getVersion();
         this.serviceClass = builder.getServiceClass();
         this.address = builder.getAddress();
@@ -64,8 +64,8 @@ public class RPCReferenceManager {
         this.callBack = callBack;
     }
 
-    public Serializer getSerializer() {
-        return serializer;
+    public SerialType getSerialType() {
+        return serialType;
     }
 
     public DefaultRPCInvokerFactory getInvokerFactory() {
@@ -120,7 +120,7 @@ public class RPCReferenceManager {
                     }
                     if(finalAddress == null)
                         throw new RPCException("Invoker: cannot resolve the host address...");
-                    logger.info("Invoker: discovery the host address: {}",finalAddress);
+                    logger.info("Invoker: discovery the host address: {}", finalAddress);
                 }
 
                 // create request
@@ -146,7 +146,7 @@ public class RPCReferenceManager {
                         try {
 
                             // statistics
-                            StatusStatistics.startCount(finalAddress,methodName);
+                            StatusStatistics.startCount(finalAddress, methodName);
 
                             client.asyncSend(finalAddress, request);
                             // wait until get
@@ -155,7 +155,7 @@ public class RPCReferenceManager {
                         } catch (Exception e) {
                             logger.info("Invoker: encounter one exception via SYNC on: {}", finalAddress,e);
                             // statistics
-                            StatusStatistics.endCount(finalAddress,methodName,false);
+                            StatusStatistics.endCount(finalAddress, methodName,false);
 
                             throw (e instanceof RPCException) ? e : new RPCException(e);
                         } finally {

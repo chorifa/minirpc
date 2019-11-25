@@ -25,29 +25,24 @@ public class DefaultRPCProviderFactory {
     private int port;
 
     private RemotingType remotingType;
-    private Serializer serializer;
 
-    public DefaultRPCProviderFactory init(SerialType serialType){
-        return init("localhost",8086, RemotingType.NETTY, serialType,null,null);
+    public DefaultRPCProviderFactory init(RemotingType remotingType, int port){
+        return init("localhost",port,remotingType,null,null);
     }
 
-    public DefaultRPCProviderFactory init(RemotingType remotingType, SerialType serialType, int port){
-        return init("localhost",port,remotingType,serialType,null,null);
-    }
-
-    public DefaultRPCProviderFactory init(RemotingType remotingType, SerialType serialType){
-        return init("localhost",8086,remotingType,serialType,null,null);
+    public DefaultRPCProviderFactory init(RemotingType remotingType){
+        return init("localhost",8086,remotingType,null,null);
     }
 
     public DefaultRPCProviderFactory init(RegistryType registryType, RegistryConfig config, int port){
-        return init("localhost", port, RemotingType.NETTY, SerialType.HESSIAN, registryType,config);
+        return init("localhost", port, RemotingType.NETTY, registryType,config);
     }
 
     public DefaultRPCProviderFactory init(){
-        return init("localhost",8086, RemotingType.NETTY, SerialType.HESSIAN, null,null);
+        return init("localhost",8086, RemotingType.NETTY, null,null);
     }
 
-    public DefaultRPCProviderFactory init(String ip, int port, RemotingType remotingType, SerialType serialType, RegistryType registryType, RegistryConfig config){
+    public DefaultRPCProviderFactory init(String ip, int port, RemotingType remotingType, RegistryType registryType, RegistryConfig config){
 
         // TODO check whether port is used && default ip
 
@@ -57,15 +52,12 @@ public class DefaultRPCProviderFactory {
             throw new RPCException("server: port invalid...");
         if(remotingType == null)
             throw new RPCException("server: remoting type should not be null...");
-        if(serialType == null || serialType.getSerializer() == null)
-            throw new RPCException("server: serializer should not be null...");
         if(registryType != null && config == null)
             throw new RPCException("server: register config not specify...");
 
         this.ip = ip;
         this.port = port;
         this.remotingType = remotingType;
-        this.serializer = serialType.getSerializer();
         if(registryType != null && registryType.getRegisterClass() != null) {
             try {
                 this.register = registryType.getRegisterClass().getDeclaredConstructor().newInstance();
@@ -83,10 +75,6 @@ public class DefaultRPCProviderFactory {
         this.address = AddressUtil.generateAddress(this.ip,this.port);
 
         return this;
-    }
-
-    public Serializer getSerializer() {
-        return serializer;
     }
 
     public String getIp() {

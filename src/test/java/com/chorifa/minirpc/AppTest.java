@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Unit test for simple App.
  */
-public class AppTest 
+public class AppTest
 {
     /**
      * Rigorous Test :-)
@@ -42,13 +42,13 @@ public class AppTest
 
     @Test
     public void testMultiProvider(){
-        DefaultRPCProviderFactory providerFactory1 = new DefaultRPCProviderFactory().init(RemotingType.NETTY, SerialType.HESSIAN, 8081)
+        DefaultRPCProviderFactory providerFactory1 = new DefaultRPCProviderFactory().init(RemotingType.NETTY, 8081)
                 .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>())
                 .addService(TestService.class.getName(),null, new TestServiceImpl<String>());
-        DefaultRPCProviderFactory providerFactory2 = new DefaultRPCProviderFactory().init(RemotingType.NETTY, SerialType.HESSIAN, 8082)
+        DefaultRPCProviderFactory providerFactory2 = new DefaultRPCProviderFactory().init(RemotingType.NETTY, 8082)
                 .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>())
                 .addService(TestService.class.getName(),null, new TestServiceImpl<String>());
-        DefaultRPCProviderFactory providerFactory3 = new DefaultRPCProviderFactory().init(RemotingType.NETTY, SerialType.HESSIAN, 8083)
+        DefaultRPCProviderFactory providerFactory3 = new DefaultRPCProviderFactory().init(RemotingType.NETTY, 8083)
                 .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>())
                 .addService(TestService.class.getName(),null, new TestServiceImpl<String>());
         providerFactory1.start();
@@ -68,18 +68,25 @@ public class AppTest
     @Test
     public void testMultiInvoker() throws ExecutionException, InterruptedException {
         RPCReferenceManager manager1 = ReferenceManagerBuilder.init()
+                .applySerializer(SerialType.HESSIAN)
+                .applyRemotingType(RemotingType.NETTY_HTTP)
                 .applySendType(SendType.FUTURE)
-                .forService(TestService.class).forAddress("localhost:8081").build();
+                .forService(TestService.class).forAddress("localhost:8086").build();
         RPCReferenceManager manager2 = ReferenceManagerBuilder.init()
+                .applySerializer(SerialType.PROTOSTUFF)
+                .applyRemotingType(RemotingType.NETTY_HTTP)
                 .applySendType(SendType.FUTURE)
-                .forService(TestService.class).forAddress("localhost:8081").build();
+                .forService(TestService.class).forAddress("localhost:8086").build();
         RPCReferenceManager manager3 = ReferenceManagerBuilder.init()
+                .applyRemotingType(RemotingType.NETTY_HTTP)
                 .applySendType(SendType.FUTURE)
-                .forService(TestService.class).forAddress("localhost:8083").build();
+                .forService(TestService.class).forAddress("localhost:8086").build();
 
         TestService<UserDO> service1 = manager1.get();
         TestService<UserDO> service2 = manager2.get();
         TestService<UserDO> service3 = manager3.get();
+
+        System.out.println("get proxy done.");
 
         NageDO nageDO = new NageDO();
         nageDO.age=10; nageDO.name="jiecheng Chong";
@@ -89,22 +96,26 @@ public class AppTest
 
         service1.show(nageDO, likes);
         CompletableFuture<UserDO> cf1 = RemotingFutureAdaptor.getCompletableFuture();
+        System.out.println("get future done.");
 
         service2.show(nageDO, likes);
         CompletableFuture<UserDO> cf2 = RemotingFutureAdaptor.getCompletableFuture();
+        System.out.println("get future done.");
 
         service3.show(nageDO, likes);
         CompletableFuture<UserDO> cf3 = RemotingFutureAdaptor.getCompletableFuture();
+        System.out.println("get future done.");
 
-        UserDO userDO1 = cf1.get();
-        UserDO userDO2 = cf2.get();
-        UserDO userDO3 = cf3.get();
-        System.out.println(userDO1);
-        System.out.println(userDO2);
-        System.out.println(userDO3);
         try {
+            UserDO userDO1 = cf1.get(5, TimeUnit.SECONDS);
+            UserDO userDO2 = cf2.get();
+            UserDO userDO3 = cf3.get();
+            System.out.println("manager 1 -> using completable future : "+userDO1);
+            System.out.println("manager 2 -> using completable future : "+userDO2);
+            System.out.println("manager 3 -> using completable future : "+userDO3);
+
             TimeUnit.SECONDS.sleep(5);
-        }catch (InterruptedException e){
+        }catch (Exception e){
             e.printStackTrace();
         }finally {
             manager1.getInvokerFactory().stop();
@@ -132,7 +143,7 @@ public class AppTest
 
     @Test
     public void testDefaultProvider(){
-        DefaultRPCProviderFactory providerFactory = new DefaultRPCProviderFactory().init(RemotingType.NETTY, SerialType.HESSIAN)
+        DefaultRPCProviderFactory providerFactory = new DefaultRPCProviderFactory().init(RemotingType.NETTY_HTTP)
                 .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>())
                 .addService(TestService.class.getName(),null, new TestServiceImpl<String>());
         providerFactory.start();
@@ -149,12 +160,13 @@ public class AppTest
     @Test
     public void testInvokerNewCallBack() throws ExecutionException, InterruptedException {
         RPCReferenceManager manager = ReferenceManagerBuilder.init()
+                .applyRemotingType(RemotingType.NETTY)
                 .applySendType(SendType.CALLBACK)
                 .forService(TestService.class).forAddress("localhost:8086").build();
         manager.setCallBack(new InvokeCallBack<Object>() {
             @Override
             public void onSuccess(Object result) throws Exception {
-                System.out.println(result);
+                System.out.println("use call back: "+result);
             }
 
             @Override

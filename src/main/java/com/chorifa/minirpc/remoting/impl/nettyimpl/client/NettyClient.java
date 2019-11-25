@@ -10,7 +10,7 @@ public class NettyClient extends Client {
 
     @Override
     public void asyncSend(String address, RemotingRequest request) throws Exception {
-        ClientInstance.asyncSend(address,request,CLASS_NAME,rpcReferenceManager);
+        ClientInstance.asyncSend(address, request, CLASS_NAME, rpcReferenceManager);
     }
 
 }

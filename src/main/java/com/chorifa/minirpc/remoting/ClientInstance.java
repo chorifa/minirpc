@@ -4,7 +4,7 @@ import com.chorifa.minirpc.invoker.reference.RPCReferenceManager;
 import com.chorifa.minirpc.remoting.entity.RemotingRequest;
 import com.chorifa.minirpc.invoker.DefaultRPCInvokerFactory;
 import com.chorifa.minirpc.utils.RPCException;
-import com.chorifa.minirpc.utils.serialize.Serializer;
+import com.chorifa.minirpc.utils.serialize.SerialType;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import org.slf4j.Logger;
@@ -34,16 +34,16 @@ public abstract class ClientInstance {
     // TODO only shot down channel. when to shot down EventLoopGroup?
     protected abstract void close();
 
-    protected abstract void init(String address, Serializer serializer) throws Exception;
+    protected abstract void init(String address) throws Exception;
 
-    protected abstract void send(RemotingRequest request) throws Exception;
+    protected abstract void send(RemotingRequest request, SerialType serialType) throws Exception;
 
     // -------------------    outsider method    -------------------
 
     public static void asyncSend(String address, RemotingRequest request, Class<? extends ClientInstance> className, RPCReferenceManager referenceManager) throws Exception {
-        ClientInstance clientInstance = getInstance(address,className,referenceManager);
+        ClientInstance clientInstance = getInstance(address, className, referenceManager);
         // send invoke request
-        clientInstance.send(request);
+        clientInstance.send(request, referenceManager.getSerialType());
     }
 
     // -------------------    pool manager    -------------------
@@ -107,7 +107,7 @@ public abstract class ClientInstance {
 
             ClientInstance newInstance;
             try {
-                 newInstance = className.getDeclaredConstructor().newInstance();
+                newInstance = className.getDeclaredConstructor().newInstance();
             }catch (Exception e){
                 logger.error("remoting: new instance failed... try again",e);
                 try{
@@ -119,7 +119,7 @@ public abstract class ClientInstance {
             }
             newInstance.invokerFactory = referenceManager.getInvokerFactory();
             try{
-                newInstance.init(address, referenceManager.getSerializer());
+                newInstance.init(address);
                 connectionPool.put(address,newInstance);
             }catch (Exception e){
                 if(newInstance != null)

@@ -5,8 +5,9 @@ import com.chorifa.minirpc.remoting.entity.RemotingRequest;
 import com.chorifa.minirpc.utils.AddressUtil;
 import com.chorifa.minirpc.utils.RPCException;
 import com.chorifa.minirpc.utils.RuntimeUtil;
-import com.chorifa.minirpc.utils.serialize.Serializer;
+import com.chorifa.minirpc.utils.serialize.SerialType;
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelOption;
@@ -29,12 +30,11 @@ public class NettyHttp2ClientInstance extends ClientInstance {
 
     private Channel channel;
     //private EventLoopGroup group;
-    private Serializer serializer;
     private String address;
     private String host;
 
     @Override
-    protected void init(String address, Serializer serializer) throws Exception {
+    protected void init(String address) throws Exception {
         this.address = address;
         Object[] objs = AddressUtil.parseAddress(address);
         this.host = (String)objs[0];
@@ -56,7 +56,7 @@ public class NettyHttp2ClientInstance extends ClientInstance {
                     .build();
         }else sslCtx = null;
 
-        NettyHttp2ClientInitializer initializer = new NettyHttp2ClientInitializer(sslCtx,Integer.MAX_VALUE,invokerFactory,serializer);
+        NettyHttp2ClientInitializer initializer = new NettyHttp2ClientInitializer(sslCtx,Integer.MAX_VALUE,invokerFactory);
 
         Bootstrap bs = new Bootstrap();
         bs.group(ClientInstance.group);
@@ -72,7 +72,6 @@ public class NettyHttp2ClientInstance extends ClientInstance {
             return;
         }
 
-        this.serializer = serializer;
         logger.info("client --->>> server:{}  connect done.", address);
 
         try {
@@ -96,7 +95,7 @@ public class NettyHttp2ClientInstance extends ClientInstance {
     protected void close() {
         if(this.channel != null)
             this.channel.close(); // note that: "close" will actively close the channel;
-            // while, channel.closeFuture().sync() will start a sub-thread listener wait for channel is shutdown.
+        // while, channel.closeFuture().sync() will start a sub-thread listener wait for channel is shutdown.
         // cannot close group. can only close channel
         //group.shutdownGracefully();
 
@@ -104,15 +103,20 @@ public class NettyHttp2ClientInstance extends ClientInstance {
     }
 
     @Override
-    protected void send(RemotingRequest request) throws Exception {
+    protected void send(RemotingRequest request, SerialType serialType) throws Exception {
         if(request == null)
             throw new RPCException("NettyHttp2Clint send null request...");
         // actually, stream id has nothing to do with request id. here is for code compatibility
         int streamId = Integer.parseInt(request.getRequestId());
-        byte[] data = serializer.serialize(request);
+        byte[] data = serialType.getSerializer().serialize(request);
+        ByteBuf byteBuf = Unpooled.buffer(data.length +4);
+        int magic = serialType.getMagic();
+        byteBuf.writeInt(magic);
+        byteBuf.writeBytes(data);
+
         HttpScheme scheme = useSSL ? HttpScheme.HTTPS : HttpScheme.HTTP;
         FullHttpRequest req = new DefaultFullHttpRequest(HttpVersion.HTTP_1_1, HttpMethod.POST, "/post",
-                Unpooled.wrappedBuffer(data));
+                byteBuf);
         req.headers().add(HttpHeaderNames.HOST, address);
         req.headers().add(HttpConversionUtil.ExtensionHeaderNames.SCHEME.text(), scheme.name());
         req.headers().add(HttpHeaderNames.ACCEPT_ENCODING, HttpHeaderValues.GZIP);

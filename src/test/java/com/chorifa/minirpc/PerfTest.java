@@ -21,7 +21,7 @@ public class PerfTest {
 
     @Test
     public void requestPerf4miniRPCProducer(){
-        DefaultRPCProviderFactory providerFactory = new DefaultRPCProviderFactory().init(RemotingType.NETTY, SerialType.HESSIAN)
+        DefaultRPCProviderFactory providerFactory = new DefaultRPCProviderFactory().init(RemotingType.NETTY)
                 .addService(PerfService.class.getName(),null, new PerfServiceImpl());
         providerFactory.start();
         try{

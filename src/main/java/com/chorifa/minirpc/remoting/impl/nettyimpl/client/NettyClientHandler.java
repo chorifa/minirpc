@@ -2,13 +2,14 @@ package com.chorifa.minirpc.remoting.impl.nettyimpl.client;
 
 import com.chorifa.minirpc.invoker.DefaultRPCInvokerFactory;
 import com.chorifa.minirpc.remoting.entity.RemotingResponse;
+import com.chorifa.minirpc.remoting.impl.nettyimpl.codec.CodeCPair;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.timeout.IdleStateEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class NettyClientHandler extends SimpleChannelInboundHandler<RemotingResponse> {
+class NettyClientHandler extends SimpleChannelInboundHandler<CodeCPair> {
 
     private static Logger logger = LoggerFactory.getLogger(NettyClientHandler.class);
 
@@ -19,10 +20,12 @@ class NettyClientHandler extends SimpleChannelInboundHandler<RemotingResponse> {
     }
 
     @Override
-    protected void channelRead0(ChannelHandlerContext channelHandlerContext, RemotingResponse remotingResponse) throws Exception {
+    protected void channelRead0(ChannelHandlerContext channelHandlerContext, CodeCPair pair) throws Exception {
+        logger.debug("Netty Client receive response.");
+        RemotingResponse remotingResponse = pair.get(RemotingResponse.class);
         // make response seen to invoker
         // InvokerManager set response to Future
-        invokerFactory.injectResponse(remotingResponse.getRequestId(),remotingResponse);
+        invokerFactory.injectResponse(remotingResponse.getRequestId(), remotingResponse);
     }
 
     @Override

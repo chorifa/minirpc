@@ -1,6 +1,8 @@
 package com.chorifa.minirpc.remoting.impl.nettyhttpimpl.server;
 
-import io.netty.buffer.ByteBufUtil;
+import com.chorifa.minirpc.utils.serialize.SerialType;
+import com.chorifa.minirpc.utils.serialize.Serializer;
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -29,19 +31,24 @@ public class NettyHttpServerHandler extends SimpleChannelInboundHandler<FullHttp
     @Override
     protected void channelRead0(ChannelHandlerContext channelHandlerContext, FullHttpRequest request) throws Exception {
         logger.debug("Netty Http server receive a request...");
-        final byte[] data = ByteBufUtil.getBytes(request.content());
+        ByteBuf byteBuf = request.content();
         final String uri = request.uri();
         final boolean isKeepAlive = HttpUtil.isKeepAlive(request);
-
         // decode
-        if(data == null || data.length == 0)
+        if(byteBuf == null || byteBuf.readableBytes() <= 4)
             throw new RPCException("NettyHttpServer decode data is null...");
 
-        RemotingRequest remotingRequest = providerFactory.getSerializer().deserialize(data,RemotingRequest.class);
+        final int magic = byteBuf.readInt();
+        final Serializer serializer = SerialType.getSerializerByMagic(magic);
+        byte[] data = new byte[byteBuf.readableBytes()];
+        byteBuf.readBytes(data);
+
+        RemotingRequest remotingRequest = serializer.deserialize(data, RemotingRequest.class);
         try {
             executorService.execute(()->{
                 RemotingResponse response = providerFactory.invokeService(remotingRequest);
-                FullHttpResponse httpResponse = generateResponse(response,isKeepAlive);
+                byte[] rep = serializer.serialize(response);
+                FullHttpResponse httpResponse = generateResponse(rep, isKeepAlive, magic);
                 channelHandlerContext.writeAndFlush(httpResponse);
             });
         }catch (Throwable e){
@@ -49,19 +56,22 @@ public class NettyHttpServerHandler extends SimpleChannelInboundHandler<FullHttp
             RemotingResponse response = new RemotingResponse();
             response.setRequestId(remotingRequest.getRequestId());
             response.setErrorMsg(e.getMessage());
-            FullHttpResponse httpResponse = generateResponse(response,isKeepAlive);
+            byte[] rep = serializer.serialize(response);
+            FullHttpResponse httpResponse = generateResponse(rep, isKeepAlive, magic);
             channelHandlerContext.writeAndFlush(httpResponse);
         }
     }
 
-    private FullHttpResponse generateResponse(RemotingResponse response, boolean isKeepAlive){
-        byte[] data = providerFactory.getSerializer().serialize(response);
+    private FullHttpResponse generateResponse(byte[] data, boolean isKeepAlive, int magic){
+        ByteBuf byteBuf = Unpooled.buffer(data.length +4);
+        byteBuf.writeInt(magic);
+        byteBuf.writeBytes(data);
 
-        FullHttpResponse httpResponse = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, Unpooled.wrappedBuffer(data));
-        httpResponse.headers().set(HttpHeaderNames.CONTENT_LENGTH,httpResponse.content().readableBytes());
-        httpResponse.headers().set(HttpHeaderNames.CONTENT_TYPE,"text/html;charset=UTF-8");
+        FullHttpResponse httpResponse = new DefaultFullHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK, byteBuf);
+        httpResponse.headers().set(HttpHeaderNames.CONTENT_LENGTH, httpResponse.content().readableBytes());
+        httpResponse.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/html;charset=UTF-8");
         if(isKeepAlive)
-            httpResponse.headers().set(HttpHeaderNames.CONNECTION,HttpHeaderValues.KEEP_ALIVE);
+            httpResponse.headers().set(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE);
 
         return httpResponse;
     }

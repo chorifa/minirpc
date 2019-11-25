@@ -3,7 +3,6 @@ package com.chorifa.minirpc.remoting.impl.nettyimpl.codec;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
-import com.chorifa.minirpc.utils.serialize.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,17 +12,17 @@ public class NettyDecoder extends ByteToMessageDecoder {
     private static Logger logger = LoggerFactory.getLogger(NettyDecoder.class);
 
     private Class<?> clazz;
-    private Serializer serializer;
 
-    public NettyDecoder(Class<?> clazz, Serializer serializer){
+    public NettyDecoder(Class<?> clazz){
         this.clazz = clazz;
-        this.serializer = serializer;
     }
 
     @Override
     protected void decode(ChannelHandlerContext channelHandlerContext, ByteBuf byteBuf, List<Object> list) throws Exception {
-        if(byteBuf.readableBytes() < 4) return;
+        if(byteBuf.readableBytes() < 8) return;
         byteBuf.markReaderIndex(); //
+        int magic = byteBuf.readInt();
+        // TODO what if magic num is wrong
         int dataLength = byteBuf.readInt();
         if(dataLength < 0){
             channelHandlerContext.close();
@@ -38,9 +37,9 @@ public class NettyDecoder extends ByteToMessageDecoder {
 
         byte[] data = new byte[dataLength];
         byteBuf.readBytes(data);
-        Object obj = serializer.deserialize(data,clazz);
+        CodeCPair pair = CodeCPair.generatePair(magic, data, clazz);
 
-        if(obj != null) list.add(obj);
+        list.add(pair);
 
         logger.debug("Netty Decoder decode succeed .");
     }
