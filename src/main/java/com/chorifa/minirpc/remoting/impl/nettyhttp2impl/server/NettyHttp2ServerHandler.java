@@ -3,6 +3,7 @@ package com.chorifa.minirpc.remoting.impl.nettyhttp2impl.server;
 import com.chorifa.minirpc.provider.DefaultRPCProviderFactory;
 import com.chorifa.minirpc.remoting.entity.RemotingRequest;
 import com.chorifa.minirpc.remoting.entity.RemotingResponse;
+import com.chorifa.minirpc.threads.ThreadManager;
 import com.chorifa.minirpc.utils.RPCException;
 import com.chorifa.minirpc.utils.serialize.SerialType;
 import com.chorifa.minirpc.utils.serialize.Serializer;
@@ -18,7 +19,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.ExecutorService;
 
 @ChannelHandler.Sharable
 public class NettyHttp2ServerHandler extends ChannelDuplexHandler {
@@ -28,12 +28,10 @@ public class NettyHttp2ServerHandler extends ChannelDuplexHandler {
     // changes in origin String/bytes can be visible in wrappedBuffer
     private static ByteBuf WARN_WORDS = Unpooled.unreleasableBuffer(Unpooled.copiedBuffer("WARNING: Get Method NOT Supported!", StandardCharsets.UTF_8));
 
-    private final DefaultRPCProviderFactory factory;
-    private final ExecutorService service;
+    private final DefaultRPCProviderFactory providerFactory;
 
-    NettyHttp2ServerHandler(DefaultRPCProviderFactory factory, ExecutorService service) {
-        this.factory = factory;
-        this.service = service;
+    NettyHttp2ServerHandler(DefaultRPCProviderFactory factory) {
+        this.providerFactory = factory;
     }
 
     @Override
@@ -87,15 +85,26 @@ public class NettyHttp2ServerHandler extends ChannelDuplexHandler {
 
             RemotingRequest remotingRequest = serializer.deserialize(bytes, RemotingRequest.class);
             try{
-                service.execute(()->{
-                    RemotingResponse response = factory.invokeService(remotingRequest); // will not throw exception and always return response
+                if(providerFactory.isBlocking(remotingRequest.getInterfaceName(), remotingRequest.getVersion())
+                        || remotingRequest.isBlocking()) {
+                    ThreadManager.publishEvent(ctx.channel().eventLoop(), ()->{
+                        RemotingResponse response = providerFactory.invokeService(remotingRequest); // will not throw exception and always return response
+                        byte[] rpsBytes = serializer.serialize(response); // may have runtime exception
+                        ByteBuf payload = Unpooled.buffer(rpsBytes.length +4);
+                        payload.writeInt(magic);
+                        payload.writeBytes(rpsBytes);
+
+                        sendResponse(ctx, payload);
+                    });
+                }else {
+                    RemotingResponse response = providerFactory.invokeService(remotingRequest); // will not throw exception and always return response
                     byte[] rpsBytes = serializer.serialize(response); // may have runtime exception
                     ByteBuf payload = Unpooled.buffer(rpsBytes.length +4);
                     payload.writeInt(magic);
                     payload.writeBytes(rpsBytes);
 
                     sendResponse(ctx, payload);
-                });
+                }
             }catch (Throwable e){ // ExecutorService exception : rejection
                 logger.error("Netty Http Server encounter one error when handling the request...",e);
                 RemotingResponse response = new RemotingResponse();

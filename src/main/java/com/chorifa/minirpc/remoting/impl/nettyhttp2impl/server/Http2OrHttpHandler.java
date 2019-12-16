@@ -10,19 +10,15 @@ import io.netty.handler.codec.http2.Http2MultiplexHandler;
 import io.netty.handler.ssl.ApplicationProtocolNames;
 import io.netty.handler.ssl.ApplicationProtocolNegotiationHandler;
 
-import java.util.concurrent.ExecutorService;
-
 public class Http2OrHttpHandler extends ApplicationProtocolNegotiationHandler {
 
     private static final int MAX_CONTENT_LENGTH = 1024 * 100;
 
     private final DefaultRPCProviderFactory factory;
-    private final ExecutorService service;
 
-    Http2OrHttpHandler(DefaultRPCProviderFactory factory, ExecutorService service){
+    Http2OrHttpHandler(DefaultRPCProviderFactory factory){
         super(ApplicationProtocolNames.HTTP_1_1);
         this.factory = factory;
-        this.service = service;
     }
 
 //    Http2OrHttpHandler(){
@@ -35,12 +31,12 @@ public class Http2OrHttpHandler extends ApplicationProtocolNegotiationHandler {
         switch (protocol){
             case ApplicationProtocolNames.HTTP_2:
                 ctx.pipeline().addLast(Http2FrameCodecBuilder.forServer().build())
-                        .addLast(new Http2MultiplexHandler(new NettyHttp2ServerHandler(factory,service)));
+                        .addLast(new Http2MultiplexHandler(new NettyHttp2ServerHandler(factory)));
                 break;
             case ApplicationProtocolNames.HTTP_1_1:
                 ctx.pipeline().addLast(new HttpServerCodec(),
                         new HttpObjectAggregator(MAX_CONTENT_LENGTH),
-                        new NettyHttp1ServerHandler(factory,service,"ALPN Negotiation"));
+                        new NettyHttp1ServerHandler(factory,"ALPN Negotiation"));
                 break;
             default:
                 throw new RPCException("NettyHttp2Server >> ALPN-Negotiation: unsupported protocol: " + protocol);

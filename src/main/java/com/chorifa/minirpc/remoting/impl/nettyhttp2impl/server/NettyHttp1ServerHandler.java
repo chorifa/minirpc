@@ -3,6 +3,7 @@ package com.chorifa.minirpc.remoting.impl.nettyhttp2impl.server;
 import com.chorifa.minirpc.provider.DefaultRPCProviderFactory;
 import com.chorifa.minirpc.remoting.entity.RemotingRequest;
 import com.chorifa.minirpc.remoting.entity.RemotingResponse;
+import com.chorifa.minirpc.threads.ThreadManager;
 import com.chorifa.minirpc.utils.RPCException;
 import com.chorifa.minirpc.utils.serialize.SerialType;
 import com.chorifa.minirpc.utils.serialize.Serializer;
@@ -15,18 +16,14 @@ import io.netty.handler.timeout.IdleStateEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.ExecutorService;
-
 public class NettyHttp1ServerHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     private static final Logger logger = LoggerFactory.getLogger(NettyHttp1ServerHandler.class);
 
     private final DefaultRPCProviderFactory providerFactory;
-    private final ExecutorService executorService;
     private final String establishApproach;
 
-    NettyHttp1ServerHandler(DefaultRPCProviderFactory providerFactory, ExecutorService executorService, String establishApproach){
+    NettyHttp1ServerHandler(DefaultRPCProviderFactory providerFactory, String establishApproach){
         this.providerFactory = providerFactory;
-        this.executorService = executorService;
         this.establishApproach = establishApproach;
     }
 
@@ -53,7 +50,7 @@ public class NettyHttp1ServerHandler extends SimpleChannelInboundHandler<FullHtt
 
         RemotingRequest remotingRequest = serializer.deserialize(data, RemotingRequest.class);
         try {
-            executorService.execute(()->{
+            ThreadManager.publishEvent(channelHandlerContext.channel().eventLoop(), ()->{
                 RemotingResponse response = providerFactory.invokeService(remotingRequest);
                 byte[] rep = serializer.serialize(response);
                 FullHttpResponse httpResponse = generateResponse(rep, isKeepAlive, magic);

@@ -6,7 +6,6 @@ import com.chorifa.minirpc.utils.RPCException;
 import com.chorifa.minirpc.utils.serialize.SerialType;
 import com.chorifa.minirpc.utils.serialize.Serializer;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufUtil;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.FullHttpResponse;
@@ -40,7 +39,7 @@ public class NettyHttp2ClientHandler extends SimpleChannelInboundHandler<FullHtt
         final Serializer serializer = SerialType.getSerializerByMagic(magic);
 
         RemotingResponse response = serializer.deserialize(data, RemotingResponse.class);
-        invokerFactory.injectResponse(String.valueOf(streamId),response);
+        invokerFactory.injectResponse(ctx.channel().eventLoop(), String.valueOf(streamId), response);
     }
 
     @Override

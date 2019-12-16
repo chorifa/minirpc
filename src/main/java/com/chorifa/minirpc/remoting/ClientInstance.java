@@ -15,16 +15,16 @@ import java.util.concurrent.ConcurrentHashMap;
 public abstract class ClientInstance {
 
     private static final Logger logger = LoggerFactory.getLogger(ClientInstance.class);
-
-    // all in one EventLoopGroup
-    protected static final EventLoopGroup group = new NioEventLoopGroup();
-    static {
-        // add hook to shut down EventLoopGroup
-        Runtime.getRuntime().addShutdownHook(new Thread(()->{
-            group.shutdownGracefully().syncUninterruptibly();
-            logger.info("EventLoopGroup shut down by Hook.");
-        }));
-    }
+//
+//    // all in one EventLoopGroup
+//    protected static final EventLoopGroup group = new NioEventLoopGroup();
+//    static {
+//        // add hook to shut down EventLoopGroup
+//        Runtime.getRuntime().addShutdownHook(new Thread(()->{
+//            group.shutdownGracefully().syncUninterruptibly();
+//            logger.info("EventLoopGroup shut down by Hook.");
+//        }));
+//    }
 
     protected DefaultRPCInvokerFactory invokerFactory;
     // -------------------    abstract method    -------------------

@@ -15,19 +15,35 @@ public class RemotingFutureResponse implements Future<RemotingResponse>, Remotin
     private RemotingResponse response;
 
     private InvokeCallBack<?> callBack;
+    private boolean isCallBackBlocking;
 
     public RemotingFutureResponse(RemotingRequest request) {
         this.request = request;
     }
 
+    @Override
     public InvokeCallBack<?> getCallBack() {
         return callBack;
     }
 
-    public void setCallBack(InvokeCallBack<?> callBack) {
-        this.callBack = callBack;
+    @Override
+    public boolean isCallBackBlocking() {
+        return isCallBackBlocking && callBack != null;
     }
 
+    @Override
+    public void setCallBack(InvokeCallBack<?> callBack, boolean blocking) {
+        this.callBack = callBack;
+        this.isCallBackBlocking = blocking;
+    }
+
+    @Override
+    public void setCallBack(InvokeCallBack<?> callBack) {
+        this.callBack = callBack;
+        this.isCallBackBlocking = false;
+    }
+
+    @Override
     public RemotingRequest getRequest() {
         return request;
     }

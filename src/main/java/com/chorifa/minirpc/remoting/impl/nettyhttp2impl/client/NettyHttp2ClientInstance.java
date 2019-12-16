@@ -2,6 +2,7 @@ package com.chorifa.minirpc.remoting.impl.nettyhttp2impl.client;
 
 import com.chorifa.minirpc.remoting.ClientInstance;
 import com.chorifa.minirpc.remoting.entity.RemotingRequest;
+import com.chorifa.minirpc.threads.ThreadManager;
 import com.chorifa.minirpc.utils.AddressUtil;
 import com.chorifa.minirpc.utils.RPCException;
 import com.chorifa.minirpc.utils.RuntimeUtil;
@@ -59,7 +60,7 @@ public class NettyHttp2ClientInstance extends ClientInstance {
         NettyHttp2ClientInitializer initializer = new NettyHttp2ClientInitializer(sslCtx,Integer.MAX_VALUE,invokerFactory);
 
         Bootstrap bs = new Bootstrap();
-        bs.group(ClientInstance.group);
+        bs.group(ThreadManager.workGroup);
         bs.channel(NioSocketChannel.class);
         bs.option(ChannelOption.SO_KEEPALIVE,true);
         bs.remoteAddress(host,port);

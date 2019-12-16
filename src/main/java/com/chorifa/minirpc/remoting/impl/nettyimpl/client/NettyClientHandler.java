@@ -25,7 +25,8 @@ class NettyClientHandler extends SimpleChannelInboundHandler<CodeCPair> {
         RemotingResponse remotingResponse = pair.get(RemotingResponse.class);
         // make response seen to invoker
         // InvokerManager set response to Future
-        invokerFactory.injectResponse(remotingResponse.getRequestId(), remotingResponse);
+        invokerFactory.injectResponse(channelHandlerContext.channel().eventLoop(),
+                remotingResponse.getRequestId(), remotingResponse);
     }
 
     @Override

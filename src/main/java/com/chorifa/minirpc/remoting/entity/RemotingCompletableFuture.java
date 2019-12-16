@@ -10,18 +10,35 @@ public class RemotingCompletableFuture extends CompletableFuture<RemotingRespons
 
     private InvokeCallBack<?> callBack;
 
+    private boolean isCallBackBlocking;
+
+    @Override
+    public boolean isCallBackBlocking() {
+        return isCallBackBlocking && callBack != null;
+    }
+
     public RemotingCompletableFuture(RemotingRequest request) {
         this.request = request;
     }
 
+    @Override
     public InvokeCallBack<?> getCallBack() {
         return callBack;
     }
 
-    public void setCallBack(InvokeCallBack callBack) {
+    @Override
+    public void setCallBack(InvokeCallBack<?> callBack) {
         this.callBack = callBack;
+        this.isCallBackBlocking = false;
     }
 
+    @Override
+    public void setCallBack(InvokeCallBack<?> callBack, boolean blocking) {
+        this.callBack = callBack;
+        this.isCallBackBlocking = blocking;
+    }
+
+    @Override
     public RemotingRequest getRequest() {
         return request;
     }

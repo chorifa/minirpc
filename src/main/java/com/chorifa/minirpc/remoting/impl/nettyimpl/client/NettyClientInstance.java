@@ -6,6 +6,7 @@ import com.chorifa.minirpc.remoting.entity.RemotingResponse;
 import com.chorifa.minirpc.remoting.impl.nettyimpl.codec.CodeCPair;
 import com.chorifa.minirpc.remoting.impl.nettyimpl.codec.NettyDecoder;
 import com.chorifa.minirpc.remoting.impl.nettyimpl.codec.NettyEncoder;
+import com.chorifa.minirpc.threads.ThreadManager;
 import com.chorifa.minirpc.utils.AddressUtil;
 import com.chorifa.minirpc.utils.serialize.SerialType;
 import io.netty.bootstrap.Bootstrap;
@@ -35,7 +36,7 @@ public class NettyClientInstance extends ClientInstance {
         objs = null;
 
         Bootstrap bs = new Bootstrap();
-        bs.group(ClientInstance.group).channel(NioSocketChannel.class)
+        bs.group(ThreadManager.workGroup).channel(NioSocketChannel.class)
                 .option(ChannelOption.TCP_NODELAY,true)
                 .option(ChannelOption.SO_KEEPALIVE,true)
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS,10000)

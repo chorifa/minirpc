@@ -29,7 +29,7 @@ public abstract class Server {
         this.stopCallBack = stopCallBack;
     }
 
-    public abstract void start(DefaultRPCProviderFactory providerFactory);
+    public abstract void start(DefaultRPCProviderFactory providerFactory) throws Exception;
 
     protected void beforeStart(){
         if(startCallBack != null) {

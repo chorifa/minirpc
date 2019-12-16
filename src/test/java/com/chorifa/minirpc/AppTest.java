@@ -41,14 +41,14 @@ public class AppTest
      */
 
     @Test
-    public void testMultiProvider(){
+    public void testMultiProvider() {
         DefaultRPCProviderFactory providerFactory1 = new DefaultRPCProviderFactory().init(RemotingType.NETTY, 8081)
                 .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>())
                 .addService(TestService.class.getName(),null, new TestServiceImpl<String>());
-        DefaultRPCProviderFactory providerFactory2 = new DefaultRPCProviderFactory().init(RemotingType.NETTY, 8082)
+        DefaultRPCProviderFactory providerFactory2 = new DefaultRPCProviderFactory().init(RemotingType.NETTY_HTTP, 8082)
                 .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>())
                 .addService(TestService.class.getName(),null, new TestServiceImpl<String>());
-        DefaultRPCProviderFactory providerFactory3 = new DefaultRPCProviderFactory().init(RemotingType.NETTY, 8083)
+        DefaultRPCProviderFactory providerFactory3 = new DefaultRPCProviderFactory().init(RemotingType.NETTY_HTTP2, 8083)
                 .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>())
                 .addService(TestService.class.getName(),null, new TestServiceImpl<String>());
         providerFactory1.start();
@@ -69,16 +69,16 @@ public class AppTest
     public void testMultiInvoker() throws ExecutionException, InterruptedException {
         RPCReferenceManager manager1 = ReferenceManagerBuilder.init()
                 .applySerializer(SerialType.HESSIAN)
-                .applyRemotingType(RemotingType.NETTY_HTTP)
+                .applyRemotingType(RemotingType.NETTY)
                 .applySendType(SendType.FUTURE)
                 .forService(TestService.class).forAddress("localhost:8086").build();
         RPCReferenceManager manager2 = ReferenceManagerBuilder.init()
                 .applySerializer(SerialType.PROTOSTUFF)
-                .applyRemotingType(RemotingType.NETTY_HTTP)
+                .applyRemotingType(RemotingType.NETTY)
                 .applySendType(SendType.FUTURE)
                 .forService(TestService.class).forAddress("localhost:8086").build();
         RPCReferenceManager manager3 = ReferenceManagerBuilder.init()
-                .applyRemotingType(RemotingType.NETTY_HTTP)
+                .applyRemotingType(RemotingType.NETTY)
                 .applySendType(SendType.FUTURE)
                 .forService(TestService.class).forAddress("localhost:8086").build();
 
@@ -123,6 +123,81 @@ public class AppTest
     }
 
     @Test
+    public void testMultiInvokerCallback() {
+        RPCReferenceManager manager1 = ReferenceManagerBuilder.init()
+                .applySerializer(SerialType.HESSIAN)
+                .applyRemotingType(RemotingType.NETTY)
+                .applySendType(SendType.CALLBACK)
+                .forService(TestService.class).forAddress("localhost:8081").build();
+        RPCReferenceManager manager2 = ReferenceManagerBuilder.init()
+                .applySerializer(SerialType.PROTOSTUFF)
+                .applyRemotingType(RemotingType.NETTY_HTTP)
+                .applySendType(SendType.CALLBACK)
+                .forService(TestService.class).forAddress("localhost:8082").build();
+        RPCReferenceManager manager3 = ReferenceManagerBuilder.init()
+                .applyRemotingType(RemotingType.NETTY_HTTP2)
+                .applySendType(SendType.CALLBACK)
+                .forService(TestService.class).forAddress("localhost:8083").build();
+
+        manager1.setCallBack(new InvokeCallBack<Object>() {
+            @Override
+            public void onSuccess(Object result) throws Exception {
+                System.out.println("Manager1: use call back in blocking way: "+result);
+            }
+
+            @Override
+            public void onException(Throwable t) throws Exception {
+                System.err.println(t.getMessage());
+            }
+        }, true);
+        manager2.setCallBack(new InvokeCallBack<Object>() {
+            @Override
+            public void onSuccess(Object result) throws Exception {
+                System.out.println("Manager2: use call back in blocking way: "+result);
+            }
+
+            @Override
+            public void onException(Throwable t) throws Exception {
+                System.err.println(t.getMessage());
+            }
+        }, true);
+        manager3.setCallBack(new InvokeCallBack<Object>() {
+            @Override
+            public void onSuccess(Object result) throws Exception {
+                System.out.println("Manager3: use call back in blocking way: "+result);
+            }
+
+            @Override
+            public void onException(Throwable t) throws Exception {
+                System.err.println(t.getMessage());
+            }
+        }, true);
+
+        TestService<UserDO> service1 = manager1.get();
+        TestService<UserDO> service2 = manager2.get();
+        TestService<UserDO> service3 = manager3.get();
+
+        System.out.println("get proxy done.");
+
+        NageDO nageDO = new NageDO();
+        nageDO.age=10; nageDO.name="jiecheng Chong";
+        List<String> likes = new ArrayList<>();
+        likes.add("apple");
+        likes.add("egg");
+
+        service1.show(nageDO, likes);
+        service2.show(nageDO, likes);
+        service3.show(nageDO, likes);
+
+        try {
+            TimeUnit.SECONDS.sleep(20);
+        }catch (InterruptedException ignore) {
+        }finally {
+            manager1.getInvokerFactory().stop();
+        }
+    }
+
+    @Test
     public void testProvider(){
         RegistryConfig config = new RegistryConfig();
         config.setRegisterAddress("redis://localhost:6379");
@@ -143,13 +218,13 @@ public class AppTest
 
     @Test
     public void testDefaultProvider(){
-        DefaultRPCProviderFactory providerFactory = new DefaultRPCProviderFactory().init(RemotingType.NETTY_HTTP)
-                .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>())
-                .addService(TestService.class.getName(),null, new TestServiceImpl<String>());
+        DefaultRPCProviderFactory providerFactory = new DefaultRPCProviderFactory().init(RemotingType.NETTY)
+                .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>(), false)
+                .addService(TestService.class.getName(),null, new TestServiceImpl<String>(), false);
         providerFactory.start();
         try{
             TimeUnit.MINUTES.sleep(1);
-        }catch (Exception e){
+        }catch (Exception e) {
             e.printStackTrace();
         }finally {
             providerFactory.stop();

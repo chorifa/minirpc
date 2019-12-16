@@ -34,7 +34,7 @@ public class NettyHttpClientHandler extends SimpleChannelInboundHandler<FullHttp
         final Serializer serializer = SerialType.getSerializerByMagic(magic);
 
         RemotingResponse response = serializer.deserialize(data, RemotingResponse.class);
-        invokerFactory.injectResponse(response.getRequestId(),response);
+        invokerFactory.injectResponse(channelHandlerContext.channel().eventLoop(), response.getRequestId(), response);
     }
 
     @Override

@@ -20,8 +20,17 @@ public class RemotingRequest implements Serializable {
 
     private Object[] args;
 
+    private boolean isBlocking = false;
 
     // -------------------------- get and set --------------------------
+
+    public boolean isBlocking() {
+        return isBlocking;
+    }
+
+    public void setBlocking(boolean blocking) {
+        isBlocking = blocking;
+    }
 
     public String getTargetAddr() {
         return targetAddr;

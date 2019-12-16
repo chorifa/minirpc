@@ -4,13 +4,12 @@ import com.chorifa.minirpc.provider.DefaultRPCProviderFactory;
 import com.chorifa.minirpc.remoting.entity.RemotingRequest;
 import com.chorifa.minirpc.remoting.entity.RemotingResponse;
 import com.chorifa.minirpc.remoting.impl.nettyimpl.codec.CodeCPair;
+import com.chorifa.minirpc.threads.ThreadManager;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.timeout.IdleStateEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.concurrent.ExecutorService;
 
 class NettyServerHandler extends SimpleChannelInboundHandler<CodeCPair> {
 
@@ -18,11 +17,8 @@ class NettyServerHandler extends SimpleChannelInboundHandler<CodeCPair> {
 
     private DefaultRPCProviderFactory providerFactory;
 
-    private ExecutorService executorService;
-
-    NettyServerHandler(DefaultRPCProviderFactory factory, ExecutorService service){
+    NettyServerHandler(DefaultRPCProviderFactory factory){
         this.providerFactory = factory;
-        this.executorService = service;
     }
 
     @Override
@@ -32,7 +28,13 @@ class NettyServerHandler extends SimpleChannelInboundHandler<CodeCPair> {
 
         //provider.invoke >>> writeAndFlush(Response)
         try {
-            executorService.execute(() -> {
+            if(providerFactory.isBlocking(request.getInterfaceName(), request.getVersion()) || request.isBlocking()) {
+                ThreadManager.publishEvent(channelHandlerContext.channel().eventLoop(), () -> {
+                    RemotingResponse response = providerFactory.invokeService(request);
+                    pair.setObject(response);
+                    channelHandlerContext.writeAndFlush(pair);
+                });
+            }else {
                 RemotingResponse response = providerFactory.invokeService(request);
                 pair.setObject(response);
 //                logger.info("start encoder");
@@ -43,8 +45,8 @@ class NettyServerHandler extends SimpleChannelInboundHandler<CodeCPair> {
 //                buf.writeInt(rep.length);
 //                buf.writeBytes(rep);
                 channelHandlerContext.writeAndFlush(pair);
-            });
-        } catch (Throwable e) {
+            }
+        } catch (Throwable e) { // TO catch RuntimeException for publish may reject
             logger.error("Netty server encounter one exception while handling one request...");
             RemotingResponse response = new RemotingResponse();
             response.setRequestId(request.getRequestId());

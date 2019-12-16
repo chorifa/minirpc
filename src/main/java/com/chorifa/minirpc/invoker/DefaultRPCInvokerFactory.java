@@ -7,10 +7,12 @@ import com.chorifa.minirpc.registry.RegistryService;
 import com.chorifa.minirpc.registry.RegistryType;
 import com.chorifa.minirpc.remoting.entity.RemotingInject;
 import com.chorifa.minirpc.remoting.entity.RemotingResponse;
+import com.chorifa.minirpc.threads.ThreadManager;
 import com.chorifa.minirpc.utils.InnerCallBack;
 import com.chorifa.minirpc.utils.RPCException;
 import com.chorifa.minirpc.utils.loadbalance.BalanceMethod;
 import com.chorifa.minirpc.utils.loadbalance.LoadBalance;
+import io.netty.channel.EventLoop;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -103,7 +105,7 @@ public class DefaultRPCInvokerFactory {
     }
 
     // when to stop : Can use hook thread to auto-close
-    public void stop(){
+    public void stop() {
         if(isRunning && runLock.compareAndSet(true,false)) {
             if (register != null && register.isAvailable())
                 register.stop();
@@ -130,7 +132,43 @@ public class DefaultRPCInvokerFactory {
     }
 
     @SuppressWarnings("unchecked")
-    public void injectResponse(String id, RemotingResponse response){
+    public void injectResponse(final EventLoop eventLoop, String id, final RemotingResponse response) {
+        RemotingInject<RemotingResponse> futureResponse = futureResponseMap.remove(id);
+        if(futureResponse == null)
+            throw new RPCException("InvokerFactory: futureResponseMap do not have such futureResponse: id = "+id);
+        @SuppressWarnings("rawtypes") InvokeCallBack callBack = futureResponse.getCallBack();
+
+        if(response.getErrorMsg() == null) // success
+            StatusStatistics.endCount(futureResponse.getRequest().getTargetAddr(),futureResponse.getRequest().getMethodName(),true);
+        else // fail
+            StatusStatistics.endCount(futureResponse.getRequest().getTargetAddr(),futureResponse.getRequest().getMethodName(),false);
+
+        if(callBack != null) {
+            if(futureResponse.isCallBackBlocking()) {
+                // may has RuntimeException if reject
+                ThreadManager.publishEvent(eventLoop, () -> {
+                    try {
+                        if(response.getErrorMsg() == null) callBack.onSuccess(response.getResult());
+                        else callBack.onException(new RPCException(response.getErrorMsg()));
+                    }catch (Exception e) {
+                        logger.error("InvokerFactory: encounter exception when execute CallBack", e);
+                    }
+                });
+            }else {
+                try {
+                    if(response.getErrorMsg() == null) callBack.onSuccess(response.getResult());
+                    else callBack.onException(new RPCException(response.getErrorMsg()));
+                }catch (Exception e) {
+                    logger.error("InvokerFactory: encounter exception when execute CallBack", e);
+                }
+            }
+        }else if(!futureResponse.complete(response)) // future and sync
+            throw new RPCException("set response in future failed...");
+    }
+
+    @Deprecated
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public void injectResponse(String id, RemotingResponse response) {
         RemotingInject<RemotingResponse> futureResponse = futureResponseMap.remove(id);
         if(futureResponse == null)
             throw new RPCException("InvokerFactory: futureResponseMap do not have such futureResponse: id = "+id);
@@ -154,7 +192,7 @@ public class DefaultRPCInvokerFactory {
                 }else{
                     try {
                         callBack.onException(new RPCException(response.getErrorMsg()));
-                    }catch (Exception e){
+                    }catch (Exception e) {
                         logger.error("encounter exception when execute onException CallBack",e);
                         throw new RPCException("encounter exception when execute onException CallBack",e);
                     }
@@ -169,8 +207,10 @@ public class DefaultRPCInvokerFactory {
 
     // --------------------------- execute pool for callBack ---------------------------
     // TODO how to auto close this service pool ??? --->>> use hook thread
+    @Deprecated
     private volatile ExecutorService executorService = null;
 
+    @Deprecated
     private void executeTask(Runnable runnable){
         if(executorService == null){
             synchronized (this){

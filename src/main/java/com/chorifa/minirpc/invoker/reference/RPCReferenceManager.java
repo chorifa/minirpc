@@ -40,6 +40,8 @@ public class RPCReferenceManager {
     private DefaultRPCInvokerFactory invokerFactory;
 
     private InvokeCallBack<?> callBack;
+    private boolean isCallBackBlocking = false;
+    private boolean remoteUseBlocking = false;
 
     RPCReferenceManager(ReferenceManagerBuilder builder){
         this.serialType = builder.getSerialType();
@@ -60,8 +62,15 @@ public class RPCReferenceManager {
         initClient();
     }
 
+    public void useBlocking(boolean blocking) {
+        this.remoteUseBlocking = blocking;
+    }
     public void setCallBack(InvokeCallBack<?> callBack) {
         this.callBack = callBack;
+    }
+    public void setCallBack(InvokeCallBack<?> callBack, boolean blocking) {
+        this.callBack = callBack;
+        this.isCallBackBlocking = blocking;
     }
 
     public SerialType getSerialType() {
@@ -131,6 +140,7 @@ public class RPCReferenceManager {
                 request.setMethodName(methodName);
                 request.setVersion(version);
                 request.setParameterType(parameterType);
+                request.setBlocking(remoteUseBlocking);
                 if(remotingType == RemotingType.NETTY_HTTP2) // use stream id (odd int, 3 - Integer.MAX)
                     request.setRequestId(String.valueOf(StreamID4Http2Util.getCurrentID()));
                 else
@@ -189,7 +199,7 @@ public class RPCReferenceManager {
                         if(callBack == null)
                             throw new RPCException("Invoker: call back function should not be null...");
                         RemotingCompletableFuture futureResponse = new RemotingCompletableFuture(request);
-                        futureResponse.setCallBack(callBack);
+                        futureResponse.setCallBack(callBack, isCallBackBlocking);
                         invokerFactory.putFutureResponse(request.getRequestId(), futureResponse);
                         try{
                             //statistics
@@ -246,6 +256,7 @@ public class RPCReferenceManager {
                 request.setMethodName(methodName);
                 request.setVersion(version);
                 request.setParameterType(parameterType);
+                request.setBlocking(remoteUseBlocking);
                 if(remotingType == RemotingType.NETTY_HTTP2) // use stream id (odd int, 3 - Integer.MAX)
                     request.setRequestId(String.valueOf(StreamID4Http2Util.getCurrentID()));
                 else
@@ -304,7 +315,7 @@ public class RPCReferenceManager {
                         if(callBack == null)
                             throw new RPCException("Invoker: call back function should not be null...");
                         RemotingCompletableFuture futureResponse = new RemotingCompletableFuture(request);
-                        futureResponse.setCallBack(callBack);
+                        futureResponse.setCallBack(callBack, isCallBackBlocking);
                         invokerFactory.putFutureResponse(request.getRequestId(), futureResponse);
                         try{
                             //statistics

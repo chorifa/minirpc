@@ -18,8 +18,6 @@ import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.ExecutorService;
-
 public class Http2ServerInitializer extends ChannelInitializer<SocketChannel> {
 
     private static final Logger logger = LoggerFactory.getLogger(Http2ServerInitializer.class);
@@ -36,13 +34,12 @@ public class Http2ServerInitializer extends ChannelInitializer<SocketChannel> {
     private final SslContext sslCtx;
     private final int maxHttpContentLength;
     private final DefaultRPCProviderFactory factory;
-    private final ExecutorService service;
 
-    Http2ServerInitializer(SslContext sslContext, DefaultRPCProviderFactory factory, ExecutorService service){
-        this(sslContext,16*1024,factory,service);
+    Http2ServerInitializer(SslContext sslContext, DefaultRPCProviderFactory factory){
+        this(sslContext,16*1024,factory);
     }
 
-    Http2ServerInitializer(SslContext sslCtx, int maxHttpContentLength, final DefaultRPCProviderFactory factory, final ExecutorService service) {
+    Http2ServerInitializer(SslContext sslCtx, int maxHttpContentLength, final DefaultRPCProviderFactory factory) {
         if (maxHttpContentLength < 0) {
             throw new RPCException("maxHttpContentLength (expected >= 0): " + maxHttpContentLength);
         }
@@ -51,7 +48,6 @@ public class Http2ServerInitializer extends ChannelInitializer<SocketChannel> {
         this.sslCtx = sslCtx;
         this.maxHttpContentLength = maxHttpContentLength;
         this.factory = factory;
-        this.service = service;
     }
 
     @Override
@@ -61,7 +57,7 @@ public class Http2ServerInitializer extends ChannelInitializer<SocketChannel> {
     }
 
     private void configureSsl(SocketChannel ch){
-        ch.pipeline().addLast(sslCtx.newHandler(ch.alloc()), new Http2OrHttpHandler(factory,service));
+        ch.pipeline().addLast(sslCtx.newHandler(ch.alloc()), new Http2OrHttpHandler(factory));
     }
 
     private void configureClearText(SocketChannel ch){
@@ -71,7 +67,7 @@ public class Http2ServerInitializer extends ChannelInitializer<SocketChannel> {
             if(AsciiString.contentEquals(Http2CodecUtil.HTTP_UPGRADE_PROTOCOL_NAME, charSequence)){
                 return new Http2ServerUpgradeCodec(
                         Http2FrameCodecBuilder.forServer().build(),
-                        new Http2MultiplexHandler(new NettyHttp2ServerHandler(factory,service)));
+                        new Http2MultiplexHandler(new NettyHttp2ServerHandler(factory)));
             }
             else return null;
         };
@@ -85,7 +81,7 @@ public class Http2ServerInitializer extends ChannelInitializer<SocketChannel> {
                         // If this handler is hit then no upgrade has been attempted and the client is just talking HTTP.
                         System.err.println("Directly talking: " + msg.protocolVersion() + " (no upgrade was attempted)");
                         ChannelPipeline pipeline = ctx.pipeline();
-                        pipeline.addAfter(ctx.name(), null, new NettyHttp1ServerHandler(factory,service,"Direct. No Upgrade Attempted."));
+                        pipeline.addAfter(ctx.name(), null, new NettyHttp1ServerHandler(factory,"Direct. No Upgrade Attempted."));
                         pipeline.replace(this, null, new HttpObjectAggregator(maxHttpContentLength));
                         ctx.fireChannelRead(ReferenceCountUtil.retain(msg));
                     }

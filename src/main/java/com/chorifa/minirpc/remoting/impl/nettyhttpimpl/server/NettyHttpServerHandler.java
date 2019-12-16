@@ -1,5 +1,6 @@
 package com.chorifa.minirpc.remoting.impl.nettyhttpimpl.server;
 
+import com.chorifa.minirpc.threads.ThreadManager;
 import com.chorifa.minirpc.utils.serialize.SerialType;
 import com.chorifa.minirpc.utils.serialize.Serializer;
 import io.netty.buffer.ByteBuf;
@@ -15,17 +16,13 @@ import com.chorifa.minirpc.utils.RPCException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.ExecutorService;
-
 public class NettyHttpServerHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     private static final Logger logger = LoggerFactory.getLogger(NettyHttpServerHandler.class);
 
     private DefaultRPCProviderFactory providerFactory;
-    private ExecutorService executorService;
 
-    NettyHttpServerHandler(DefaultRPCProviderFactory providerFactory, ExecutorService executorService){
+    NettyHttpServerHandler(DefaultRPCProviderFactory providerFactory){
         this.providerFactory = providerFactory;
-        this.executorService = executorService;
     }
 
     @Override
@@ -45,12 +42,20 @@ public class NettyHttpServerHandler extends SimpleChannelInboundHandler<FullHttp
 
         RemotingRequest remotingRequest = serializer.deserialize(data, RemotingRequest.class);
         try {
-            executorService.execute(()->{
+            if(providerFactory.isBlocking(remotingRequest.getInterfaceName(), remotingRequest.getVersion())
+                    || remotingRequest.isBlocking()) {
+                ThreadManager.publishEvent(channelHandlerContext.channel().eventLoop(), ()->{
+                    RemotingResponse response = providerFactory.invokeService(remotingRequest);
+                    byte[] rep = serializer.serialize(response);
+                    FullHttpResponse httpResponse = generateResponse(rep, isKeepAlive, magic);
+                    channelHandlerContext.writeAndFlush(httpResponse);
+                });
+            }else {
                 RemotingResponse response = providerFactory.invokeService(remotingRequest);
                 byte[] rep = serializer.serialize(response);
                 FullHttpResponse httpResponse = generateResponse(rep, isKeepAlive, magic);
                 channelHandlerContext.writeAndFlush(httpResponse);
-            });
+            }
         }catch (Throwable e){
             logger.error("Netty Http Server encounter one error when handling the request...");
             RemotingResponse response = new RemotingResponse();

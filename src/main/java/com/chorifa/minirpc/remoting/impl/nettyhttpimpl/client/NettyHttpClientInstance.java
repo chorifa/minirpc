@@ -2,6 +2,7 @@ package com.chorifa.minirpc.remoting.impl.nettyhttpimpl.client;
 
 import com.chorifa.minirpc.remoting.ClientInstance;
 import com.chorifa.minirpc.remoting.entity.RemotingRequest;
+import com.chorifa.minirpc.threads.ThreadManager;
 import com.chorifa.minirpc.utils.RPCException;
 import com.chorifa.minirpc.utils.serialize.SerialType;
 import io.netty.bootstrap.Bootstrap;
@@ -43,7 +44,7 @@ public class NettyHttpClientInstance extends ClientInstance {
         if(port <= 0) port = 80;
 
         Bootstrap bs = new Bootstrap();
-        bs.group(ClientInstance.group).channel(NioSocketChannel.class)
+        bs.group(ThreadManager.workGroup).channel(NioSocketChannel.class)
                 .option(ChannelOption.SO_KEEPALIVE,true)
                 .handler(new ChannelInitializer<SocketChannel>() {
                     @Override

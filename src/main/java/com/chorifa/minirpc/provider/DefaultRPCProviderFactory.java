@@ -9,14 +9,14 @@ import com.chorifa.minirpc.remoting.entity.RemotingRequest;
 import com.chorifa.minirpc.remoting.entity.RemotingResponse;
 import com.chorifa.minirpc.utils.AddressUtil;
 import com.chorifa.minirpc.utils.RPCException;
-import com.chorifa.minirpc.utils.serialize.SerialType;
-import com.chorifa.minirpc.utils.serialize.Serializer;
 import org.apache.commons.lang3.reflect.MethodUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class DefaultRPCProviderFactory {
     private static Logger logger = LoggerFactory.getLogger(DefaultRPCProviderFactory.class);
@@ -91,7 +91,7 @@ public class DefaultRPCProviderFactory {
     private RegistryService register;
     private RegistryConfig config;
 
-    public void start(){
+    public void start() {
         try {
             server = this.remotingType.getServer().getDeclaredConstructor().newInstance();
         }catch (Exception e){
@@ -111,10 +111,16 @@ public class DefaultRPCProviderFactory {
             });
             server.setStopCallBack(()->{
                 register.stop();
-                register=null;
+                register = null;
             });
         }
-        server.start(this);
+        try {
+            server.start(this);
+        }catch (Exception ex) {
+            if(ex instanceof RPCException) throw (RPCException)ex;
+            else throw new RPCException("Provider: occur exception when start server", ex);
+        }
+
     }
 
     public void stop(){
@@ -122,17 +128,23 @@ public class DefaultRPCProviderFactory {
     }
 
     // --------------------------- service invoke ---------------------------
-    private Map<String /* interface name */ ,Object> serviceMap = new HashMap<>();
+    private final Map<String /* interface name */ ,Object> serviceMap = new HashMap<>();
+    private final Set<String /* interface name */> blockingServices = new HashSet<>();
 
     public Map<String, Object> getServiceMap() {
         return serviceMap;
     }
 
-    public DefaultRPCProviderFactory addService(String interfaceName, String version, Object serviceEntity){
+    public DefaultRPCProviderFactory addService(String interfaceName, String version, Object serviceEntity) {
+        return addService(interfaceName, version, serviceEntity,true);
+    }
+
+    public DefaultRPCProviderFactory addService(String interfaceName, String version, Object serviceEntity, boolean blocking) {
         if(interfaceName == null || interfaceName.length() == 0 || serviceEntity == null)
             throw new RPCException("add invalid service...");
-
-        serviceMap.put(generateKey(interfaceName, version),serviceEntity);
+        String key = generateKey(interfaceName, version);
+        serviceMap.put(key,serviceEntity);
+        if(blocking) blockingServices.add(key);
         return this;
     }
 
@@ -145,7 +157,7 @@ public class DefaultRPCProviderFactory {
         RemotingResponse response = new RemotingResponse();
         response.setRequestId(request.getRequestId());
 
-        String key = generateKey(request.getInterfaceName(),request.getVersion());
+        String key = generateKey(request.getInterfaceName(), request.getVersion());
         Object serviceEntity = serviceMap.get(key);
         if(serviceEntity == null) {
             response.setErrorMsg("no such service...");
@@ -162,6 +174,10 @@ public class DefaultRPCProviderFactory {
         }
 
         return response;
+    }
+
+    public boolean isBlocking(String interfaceName, String version) {
+        return blockingServices.contains(generateKey(interfaceName, version));
     }
 
 }

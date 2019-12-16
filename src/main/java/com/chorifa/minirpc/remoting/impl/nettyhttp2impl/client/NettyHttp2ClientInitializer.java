@@ -13,7 +13,6 @@ import io.netty.handler.ssl.ApplicationProtocolNegotiationHandler;
 import io.netty.handler.ssl.SslContext;
 import com.chorifa.minirpc.invoker.DefaultRPCInvokerFactory;
 import com.chorifa.minirpc.utils.RPCException;
-import com.chorifa.minirpc.utils.serialize.Serializer;
 
 import java.net.InetSocketAddress;
 
