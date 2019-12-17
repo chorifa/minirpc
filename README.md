@@ -121,7 +121,7 @@ TestService<String> service3 = manager3.get();
 
 service1.echo("call echo method in Callback way.");
 service2.echo("call echo method in Future way.");
-CompletableFuture<UserDO> cf = RemotingFutureAdaptor.getCompletableFuture(); // get future
+CompletableFuture<String> cf = RemotingFutureAdaptor.getCompletableFuture(); // get future
 String s = service3.echo("call echo method in Sync way.");
 System.out.println(s);
 System.out.println(cf.get());
