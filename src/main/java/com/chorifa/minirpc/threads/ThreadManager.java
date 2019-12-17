@@ -59,6 +59,54 @@ public final class ThreadManager {
     }
 
     /* -------------------------------------------- outer method ------------------------------------------------- */
+    /**
+     * outside api for try to publish a task into ring queue, only when current thread is in eventLoop can do
+     * hence, its thread-safe
+     * Will not blocking a thread (retry 3 times)
+     * @param eventLoop the eventLoop, which should do the task
+     * @param r Task to publish
+     * @return true if succeed or false if failed
+     */
+    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
+    public static boolean tryPublishEvent(EventLoop eventLoop, Runnable r) {
+        if(eventLoop.inEventLoop()) {
+            RingQueueManager<RingQueueEvent> manager = ringQueueMap.get(eventLoop);
+            if(manager == null) {
+                manager = RingQueueManager.createBuilder(EVENT_FACTORY, DEFAULT_SIZE,
+                        null, ProducerType.SINGLE, DEFAULT_WAIT_STRATEGY)
+                        .handleEventInPoolWith(DEFAULT_HANDLER, DEFAULT_CONSUMER).getManager();
+                ringQueueMap.put(eventLoop, manager);
+                // TODO set consumers to daemon (should modify DefaultThreadFactory)
+                manager.start(); // start the consumer
+                logger.info("start new RingQueue...");
+            }
+            // retry 3 times
+            for(int i = 0; i < 3; i++)
+                if(manager.tryPublishEvent(DEFAULT_TRANSLATOR, r)) return true;
+            return false;
+        }else {
+            try {
+                eventLoop.execute(()->{
+                    RingQueueManager<RingQueueEvent> manager = ringQueueMap.get(eventLoop);
+                    if(manager == null) {
+                        manager = RingQueueManager.createBuilder(EVENT_FACTORY, DEFAULT_SIZE,
+                                null, ProducerType.SINGLE, DEFAULT_WAIT_STRATEGY)
+                                .handleEventInPoolWith(DEFAULT_HANDLER, DEFAULT_CONSUMER).getManager();
+                        ringQueueMap.put(eventLoop, manager);
+                        // TODO set consumers to daemon (should modify DefaultThreadFactory)
+                        manager.start(); // start the consumer
+                        logger.info("start new RingQueue...");
+                    }
+                    // retry 3 times
+                    for(int i = 0; i < 3; i++)
+                        if(manager.tryPublishEvent(DEFAULT_TRANSLATOR, r)) break;
+                });
+                return true;
+            }catch (Exception e) {
+                return false;
+            }
+        }
+    }
 
     /**
      * outside api for publish a task into ring queue, only when current thread is in eventLoop can do
@@ -71,7 +119,6 @@ public final class ThreadManager {
         if(eventLoop.inEventLoop()) { // only when current thread is eventLoop can hold its RingQueue
             RingQueueManager<RingQueueEvent> manager = ringQueueMap.get(eventLoop);
             if(manager == null) {
-
                 manager = RingQueueManager.createBuilder(EVENT_FACTORY, DEFAULT_SIZE,
                         null, ProducerType.SINGLE, DEFAULT_WAIT_STRATEGY)
                         .handleEventInPoolWith(DEFAULT_HANDLER, DEFAULT_CONSUMER).getManager();

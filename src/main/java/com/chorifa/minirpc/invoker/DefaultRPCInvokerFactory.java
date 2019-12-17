@@ -146,14 +146,14 @@ public class DefaultRPCInvokerFactory {
         if(callBack != null) {
             if(futureResponse.isCallBackBlocking()) {
                 // may has RuntimeException if reject
-                ThreadManager.publishEvent(eventLoop, () -> {
+                if(!ThreadManager.tryPublishEvent(eventLoop, () -> {
                     try {
                         if(response.getErrorMsg() == null) callBack.onSuccess(response.getResult());
                         else callBack.onException(new RPCException(response.getErrorMsg()));
                     }catch (Exception e) {
                         logger.error("InvokerFactory: encounter exception when execute CallBack", e);
                     }
-                });
+                })) logger.error("InvokerFactory: encounter exception when publish CallBack event");
             }else {
                 try {
                     if(response.getErrorMsg() == null) callBack.onSuccess(response.getResult());

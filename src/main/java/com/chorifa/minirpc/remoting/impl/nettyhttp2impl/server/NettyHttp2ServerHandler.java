@@ -87,7 +87,7 @@ public class NettyHttp2ServerHandler extends ChannelDuplexHandler {
             try{
                 if(providerFactory.isBlocking(remotingRequest.getInterfaceName(), remotingRequest.getVersion())
                         || remotingRequest.isBlocking()) {
-                    ThreadManager.publishEvent(ctx.channel().eventLoop(), ()->{
+                    if(!ThreadManager.tryPublishEvent(ctx.channel().eventLoop(), ()->{
                         RemotingResponse response = providerFactory.invokeService(remotingRequest); // will not throw exception and always return response
                         byte[] rpsBytes = serializer.serialize(response); // may have runtime exception
                         ByteBuf payload = Unpooled.buffer(rpsBytes.length +4);
@@ -95,7 +95,7 @@ public class NettyHttp2ServerHandler extends ChannelDuplexHandler {
                         payload.writeBytes(rpsBytes);
 
                         sendResponse(ctx, payload);
-                    });
+                    })) throw new RPCException("Service Provider busy (cannot publish new task)");
                 }else {
                     RemotingResponse response = providerFactory.invokeService(remotingRequest); // will not throw exception and always return response
                     byte[] rpsBytes = serializer.serialize(response); // may have runtime exception

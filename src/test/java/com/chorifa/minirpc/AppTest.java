@@ -123,6 +123,55 @@ public class AppTest
     }
 
     @Test
+    public void testMultiInvokerMultiType() throws ExecutionException, InterruptedException {
+        RPCReferenceManager manager1 = ReferenceManagerBuilder.init()
+                .applySerializer(SerialType.HESSIAN)
+                .applyRemotingType(RemotingType.NETTY)
+                .applySendType(SendType.CALLBACK)
+                .forService(TestService.class).forAddress("localhost:8081").build();
+        manager1.setCallBack(new InvokeCallBack<Object>() {
+            @Override
+            public void onSuccess(Object result) throws Exception {
+                System.out.println("This is a call back: "+result);
+            }
+
+            @Override
+            public void onException(Throwable t) throws Exception {
+                System.err.println(t.getMessage());
+            }
+        }, false);
+
+        RPCReferenceManager manager2 = ReferenceManagerBuilder.init()
+                .applySerializer(SerialType.PROTOSTUFF)
+                .applyRemotingType(RemotingType.NETTY_HTTP)
+                .applySendType(SendType.FUTURE)
+                .forService(TestService.class).forAddress("localhost:8082").build();
+
+        RPCReferenceManager manager3 = ReferenceManagerBuilder.init()
+                .applyRemotingType(RemotingType.NETTY_HTTP2)
+                .applySendType(SendType.SYNC)
+                .forService(TestService.class).forAddress("localhost:8083").build();
+
+        TestService<String> service1 = manager1.get();
+        TestService<String> service2 = manager2.get();
+        TestService<String> service3 = manager3.get();
+
+        service1.echo("call echo method in Callback way.");
+        service2.echo("call echo method in Future way.");
+        CompletableFuture<UserDO> cf = RemotingFutureAdaptor.getCompletableFuture(); // get future
+        String s = service3.echo("call echo method in Sync way.");
+        System.out.println(s);
+        System.out.println(cf.get());
+
+        try {
+            TimeUnit.SECONDS.sleep(20);
+        }catch (InterruptedException ignore) {
+        }finally {
+            manager1.getInvokerFactory().stop();
+        }
+    }
+
+    @Test
     public void testMultiInvokerCallback() {
         RPCReferenceManager manager1 = ReferenceManagerBuilder.init()
                 .applySerializer(SerialType.HESSIAN)

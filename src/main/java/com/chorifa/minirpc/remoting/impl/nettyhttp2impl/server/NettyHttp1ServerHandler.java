@@ -50,12 +50,12 @@ public class NettyHttp1ServerHandler extends SimpleChannelInboundHandler<FullHtt
 
         RemotingRequest remotingRequest = serializer.deserialize(data, RemotingRequest.class);
         try {
-            ThreadManager.publishEvent(channelHandlerContext.channel().eventLoop(), ()->{
+            if(!ThreadManager.tryPublishEvent(channelHandlerContext.channel().eventLoop(), ()->{
                 RemotingResponse response = providerFactory.invokeService(remotingRequest);
                 byte[] rep = serializer.serialize(response);
                 FullHttpResponse httpResponse = generateResponse(rep, isKeepAlive, magic);
                 channelHandlerContext.writeAndFlush(httpResponse);
-            });
+            })) throw new RPCException("Service Provider busy (cannot publish new task)");
         }catch (Throwable e){
             logger.error("Netty Http Server encounter one error when handling the request...");
             RemotingResponse response = new RemotingResponse();
