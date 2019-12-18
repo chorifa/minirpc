@@ -1,5 +1,6 @@
 package com.chorifa.minirpc.remoting.impl.nettyhttpimpl.server;
 
+import com.chorifa.minirpc.threads.EventBus;
 import com.chorifa.minirpc.threads.ThreadManager;
 import com.chorifa.minirpc.utils.serialize.SerialType;
 import com.chorifa.minirpc.utils.serialize.Serializer;
@@ -42,20 +43,34 @@ public class NettyHttpServerHandler extends SimpleChannelInboundHandler<FullHttp
 
         RemotingRequest remotingRequest = serializer.deserialize(data, RemotingRequest.class);
         try {
-            if(providerFactory.isBlocking(remotingRequest.getInterfaceName(), remotingRequest.getVersion())
-                    || remotingRequest.isBlocking()) {
-                if(!ThreadManager.tryPublishEvent(channelHandlerContext.channel().eventLoop(), ()->{
-                    RemotingResponse response = providerFactory.invokeService(remotingRequest);
-                    byte[] rep = serializer.serialize(response);
-                    FullHttpResponse httpResponse = generateResponse(rep, isKeepAlive, magic);
-                    channelHandlerContext.writeAndFlush(httpResponse);
-                })) throw new RPCException("Service Provider busy (cannot publish new task)");
-            }else {
+            Runnable task = ()->{
+//                logger.info("Service: {} run on thread name: {}",remotingRequest.getInterfaceName(),Thread.currentThread().getName());
                 RemotingResponse response = providerFactory.invokeService(remotingRequest);
                 byte[] rep = serializer.serialize(response);
                 FullHttpResponse httpResponse = generateResponse(rep, isKeepAlive, magic);
                 channelHandlerContext.writeAndFlush(httpResponse);
+            };
+            String key = providerFactory.generateKey(remotingRequest.getInterfaceName(), remotingRequest.getVersion());
+            if(!providerFactory.getEventBus().publish(key, task)) {
+                if(providerFactory.isBlocking(key) || remotingRequest.isBlocking()) {
+                    if(!ThreadManager.tryPublishEvent(channelHandlerContext.channel().eventLoop(), task))
+                        throw new RPCException("Service Provider busy (cannot publish new task)");
+                }else task.run();
             }
+//            if(providerFactory.isBlocking(remotingRequest.getInterfaceName(), remotingRequest.getVersion())
+//                    || remotingRequest.isBlocking()) {
+//                if(!ThreadManager.tryPublishEvent(channelHandlerContext.channel().eventLoop(), ()->{
+//                    RemotingResponse response = providerFactory.invokeService(remotingRequest);
+//                    byte[] rep = serializer.serialize(response);
+//                    FullHttpResponse httpResponse = generateResponse(rep, isKeepAlive, magic);
+//                    channelHandlerContext.writeAndFlush(httpResponse);
+//                })) throw new RPCException("Service Provider busy (cannot publish new task)");
+//            }else {
+//                RemotingResponse response = providerFactory.invokeService(remotingRequest);
+//                byte[] rep = serializer.serialize(response);
+//                FullHttpResponse httpResponse = generateResponse(rep, isKeepAlive, magic);
+//                channelHandlerContext.writeAndFlush(httpResponse);
+//            }
         }catch (Throwable e){
             logger.error("Netty Http Server encounter one error when handling the request...");
             RemotingResponse response = new RemotingResponse();

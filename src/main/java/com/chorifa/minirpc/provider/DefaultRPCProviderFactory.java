@@ -7,6 +7,7 @@ import com.chorifa.minirpc.remoting.RemotingType;
 import com.chorifa.minirpc.remoting.Server;
 import com.chorifa.minirpc.remoting.entity.RemotingRequest;
 import com.chorifa.minirpc.remoting.entity.RemotingResponse;
+import com.chorifa.minirpc.threads.EventBus;
 import com.chorifa.minirpc.utils.AddressUtil;
 import com.chorifa.minirpc.utils.RPCException;
 import org.apache.commons.lang3.reflect.MethodUtils;
@@ -25,6 +26,18 @@ public class DefaultRPCProviderFactory {
     private int port;
 
     private RemotingType remotingType;
+
+    private final EventBus eventBus;
+
+    public DefaultRPCProviderFactory() {
+        this(null);
+    }
+
+    public DefaultRPCProviderFactory(EventBus bus) {
+        if(bus == null)
+            this.eventBus = EventBus.DEFAULT_EVENT_BUS;
+        else this.eventBus = bus;
+    }
 
     public DefaultRPCProviderFactory init(RemotingType remotingType, int port){
         return init("localhost",port,remotingType,null,null);
@@ -85,6 +98,10 @@ public class DefaultRPCProviderFactory {
         return port;
     }
 
+    public EventBus getEventBus() {
+        return eventBus;
+    }
+
     // --------------------------- server manager ---------------------------
     private Server server;
     private String address;
@@ -136,19 +153,22 @@ public class DefaultRPCProviderFactory {
     }
 
     public DefaultRPCProviderFactory addService(String interfaceName, String version, Object serviceEntity) {
-        return addService(interfaceName, version, serviceEntity,true);
+        return addService(interfaceName, version, serviceEntity, ServiceCtl.NON_BLOCKING);
     }
 
-    public DefaultRPCProviderFactory addService(String interfaceName, String version, Object serviceEntity, boolean blocking) {
+    public DefaultRPCProviderFactory addService(String interfaceName, String version, Object serviceEntity, ServiceCtl ctl) {
         if(interfaceName == null || interfaceName.length() == 0 || serviceEntity == null)
             throw new RPCException("add invalid service...");
         String key = generateKey(interfaceName, version);
-        serviceMap.put(key,serviceEntity);
-        if(blocking) blockingServices.add(key);
+        serviceMap.put(key, serviceEntity);
+        switch (ctl) {
+            case BIND: eventBus.subscribe(key, true); break;
+            case BLOCKING: blockingServices.add(key); break;
+        }
         return this;
     }
 
-    private String generateKey(String interfaceName, String version){
+    public String generateKey(String interfaceName, String version){
         return version == null?interfaceName:interfaceName+":"+version.trim();
     }
 
@@ -174,6 +194,10 @@ public class DefaultRPCProviderFactory {
         }
 
         return response;
+    }
+
+    public boolean isBlocking(String key) {
+        return blockingServices.contains(key);
     }
 
     public boolean isBlocking(String interfaceName, String version) {

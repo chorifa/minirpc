@@ -4,6 +4,7 @@ import com.chorifa.minirpc.provider.DefaultRPCProviderFactory;
 import com.chorifa.minirpc.remoting.entity.RemotingRequest;
 import com.chorifa.minirpc.remoting.entity.RemotingResponse;
 import com.chorifa.minirpc.remoting.impl.nettyimpl.codec.CodeCPair;
+import com.chorifa.minirpc.threads.EventBus;
 import com.chorifa.minirpc.threads.ThreadManager;
 import com.chorifa.minirpc.utils.RPCException;
 import io.netty.channel.ChannelHandlerContext;
@@ -29,24 +30,37 @@ class NettyServerHandler extends SimpleChannelInboundHandler<CodeCPair> {
 
         //provider.invoke >>> writeAndFlush(Response)
         try {
-            if(providerFactory.isBlocking(request.getInterfaceName(), request.getVersion()) || request.isBlocking()) {
-                if(!ThreadManager.tryPublishEvent(channelHandlerContext.channel().eventLoop(), () -> {
-                    RemotingResponse response = providerFactory.invokeService(request);
-                    pair.setObject(response);
-                    channelHandlerContext.writeAndFlush(pair);
-                })) throw new RPCException("Service Provider busy (cannot publish new task)");
-            }else {
+            Runnable task = () -> {
+//                logger.info("Service: {} run on thread name: {}",request.getInterfaceName(),Thread.currentThread().getName());
                 RemotingResponse response = providerFactory.invokeService(request);
                 pair.setObject(response);
-//                logger.info("start encoder");
-//                byte[] rep = serializer.serialize(response);
-//                logger.info("encoder done --->>> data.length = {}", rep.length);
-//                ByteBuf buf = Unpooled.buffer(rep.length +4 +4);
-//                buf.writeInt(magic);
-//                buf.writeInt(rep.length);
-//                buf.writeBytes(rep);
                 channelHandlerContext.writeAndFlush(pair);
+            }; // task
+            String key = providerFactory.generateKey(request.getInterfaceName(), request.getVersion());
+            if(!providerFactory.getEventBus().publish(key, task)) { // service not bind to fix event-loop
+                if(providerFactory.isBlocking(key) || request.isBlocking()) {
+                    if(!ThreadManager.tryPublishEvent(channelHandlerContext.channel().eventLoop(), task))
+                        throw new RPCException("Service Provider busy (cannot publish new task)");
+                }else task.run();
             }
+//            if(providerFactory.isBlocking(request.getInterfaceName(), request.getVersion()) || request.isBlocking()) {
+//                if(!ThreadManager.tryPublishEvent(channelHandlerContext.channel().eventLoop(), () -> {
+//                    RemotingResponse response = providerFactory.invokeService(request);
+//                    pair.setObject(response);
+//                    channelHandlerContext.writeAndFlush(pair);
+//                })) throw new RPCException("Service Provider busy (cannot publish new task)");
+//            }else {
+//                RemotingResponse response = providerFactory.invokeService(request);
+//                pair.setObject(response);
+////                logger.info("start encoder");
+////                byte[] rep = serializer.serialize(response);
+////                logger.info("encoder done --->>> data.length = {}", rep.length);
+////                ByteBuf buf = Unpooled.buffer(rep.length +4 +4);
+////                buf.writeInt(magic);
+////                buf.writeInt(rep.length);
+////                buf.writeBytes(rep);
+//                channelHandlerContext.writeAndFlush(pair);
+//            }
         } catch (Throwable e) { // TO catch RuntimeException for publish may reject
             logger.error("Netty server encounter one exception while handling one request...");
             RemotingResponse response = new RemotingResponse();

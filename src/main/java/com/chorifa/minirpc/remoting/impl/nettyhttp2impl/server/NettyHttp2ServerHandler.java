@@ -3,6 +3,7 @@ package com.chorifa.minirpc.remoting.impl.nettyhttp2impl.server;
 import com.chorifa.minirpc.provider.DefaultRPCProviderFactory;
 import com.chorifa.minirpc.remoting.entity.RemotingRequest;
 import com.chorifa.minirpc.remoting.entity.RemotingResponse;
+import com.chorifa.minirpc.threads.EventBus;
 import com.chorifa.minirpc.threads.ThreadManager;
 import com.chorifa.minirpc.utils.RPCException;
 import com.chorifa.minirpc.utils.serialize.SerialType;
@@ -85,26 +86,43 @@ public class NettyHttp2ServerHandler extends ChannelDuplexHandler {
 
             RemotingRequest remotingRequest = serializer.deserialize(bytes, RemotingRequest.class);
             try{
-                if(providerFactory.isBlocking(remotingRequest.getInterfaceName(), remotingRequest.getVersion())
-                        || remotingRequest.isBlocking()) {
-                    if(!ThreadManager.tryPublishEvent(ctx.channel().eventLoop(), ()->{
-                        RemotingResponse response = providerFactory.invokeService(remotingRequest); // will not throw exception and always return response
-                        byte[] rpsBytes = serializer.serialize(response); // may have runtime exception
-                        ByteBuf payload = Unpooled.buffer(rpsBytes.length +4);
-                        payload.writeInt(magic);
-                        payload.writeBytes(rpsBytes);
-
-                        sendResponse(ctx, payload);
-                    })) throw new RPCException("Service Provider busy (cannot publish new task)");
-                }else {
+                Runnable task = ()->{
                     RemotingResponse response = providerFactory.invokeService(remotingRequest); // will not throw exception and always return response
+//                    logger.info("Service: {} run on thread name: {}",remotingRequest.getInterfaceName(),Thread.currentThread().getName());
                     byte[] rpsBytes = serializer.serialize(response); // may have runtime exception
                     ByteBuf payload = Unpooled.buffer(rpsBytes.length +4);
                     payload.writeInt(magic);
                     payload.writeBytes(rpsBytes);
 
                     sendResponse(ctx, payload);
+                };
+                String key = providerFactory.generateKey(remotingRequest.getInterfaceName(), remotingRequest.getVersion());
+                if(!providerFactory.getEventBus().publish(key, task)) { // fail
+                    if(providerFactory.isBlocking(key) || remotingRequest.isBlocking()) {
+                        if(!ThreadManager.tryPublishEvent(ctx.channel().eventLoop(), task))
+                            throw new RPCException("Service Provider busy (cannot publish new task)");
+                    }else task.run();
                 }
+//                if(providerFactory.isBlocking(remotingRequest.getInterfaceName(), remotingRequest.getVersion())
+//                        || remotingRequest.isBlocking()) {
+//                    if(!ThreadManager.tryPublishEvent(ctx.channel().eventLoop(), ()->{
+//                        RemotingResponse response = providerFactory.invokeService(remotingRequest); // will not throw exception and always return response
+//                        byte[] rpsBytes = serializer.serialize(response); // may have runtime exception
+//                        ByteBuf payload = Unpooled.buffer(rpsBytes.length +4);
+//                        payload.writeInt(magic);
+//                        payload.writeBytes(rpsBytes);
+//
+//                        sendResponse(ctx, payload);
+//                    })) throw new RPCException("Service Provider busy (cannot publish new task)");
+//                }else {
+//                    RemotingResponse response = providerFactory.invokeService(remotingRequest); // will not throw exception and always return response
+//                    byte[] rpsBytes = serializer.serialize(response); // may have runtime exception
+//                    ByteBuf payload = Unpooled.buffer(rpsBytes.length +4);
+//                    payload.writeInt(magic);
+//                    payload.writeBytes(rpsBytes);
+//
+//                    sendResponse(ctx, payload);
+//                }
             }catch (Throwable e){ // ExecutorService exception : rejection
                 logger.error("Netty Http Server encounter one error when handling the request...",e);
                 RemotingResponse response = new RemotingResponse();

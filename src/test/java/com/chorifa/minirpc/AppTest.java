@@ -17,6 +17,7 @@ import com.chorifa.minirpc.invoker.type.InvokeCallBack;
 import com.chorifa.minirpc.invoker.type.RemotingFutureAdaptor;
 import com.chorifa.minirpc.invoker.type.SendType;
 import com.chorifa.minirpc.provider.DefaultRPCProviderFactory;
+import com.chorifa.minirpc.provider.ServiceCtl;
 import com.chorifa.minirpc.registry.RegistryConfig;
 import com.chorifa.minirpc.registry.RegistryType;
 import com.chorifa.minirpc.remoting.RemotingType;
@@ -44,13 +45,13 @@ public class AppTest
     public void testMultiProvider() {
         DefaultRPCProviderFactory providerFactory1 = new DefaultRPCProviderFactory().init(RemotingType.NETTY, 8081)
                 .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>())
-                .addService(TestService.class.getName(),null, new TestServiceImpl<String>());
+                .addService(TestService.class.getName(),null, new TestServiceImpl<String>(), ServiceCtl.NON_BLOCKING);
         DefaultRPCProviderFactory providerFactory2 = new DefaultRPCProviderFactory().init(RemotingType.NETTY_HTTP, 8082)
                 .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>())
-                .addService(TestService.class.getName(),null, new TestServiceImpl<String>());
+                .addService(TestService.class.getName(),null, new TestServiceImpl<String>(), ServiceCtl.BLOCKING);
         DefaultRPCProviderFactory providerFactory3 = new DefaultRPCProviderFactory().init(RemotingType.NETTY_HTTP2, 8083)
                 .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>())
-                .addService(TestService.class.getName(),null, new TestServiceImpl<String>());
+                .addService(TestService.class.getName(),null, new TestServiceImpl<String>(), ServiceCtl.BIND);
         providerFactory1.start();
         providerFactory2.start();
         providerFactory3.start();
@@ -158,7 +159,7 @@ public class AppTest
 
         service1.echo("call echo method in Callback way.");
         service2.echo("call echo method in Future way.");
-        CompletableFuture<UserDO> cf = RemotingFutureAdaptor.getCompletableFuture(); // get future
+        CompletableFuture<String> cf = RemotingFutureAdaptor.getCompletableFuture(); // get future
         String s = service3.echo("call echo method in Sync way.");
         System.out.println(s);
         System.out.println(cf.get());
@@ -268,8 +269,8 @@ public class AppTest
     @Test
     public void testDefaultProvider(){
         DefaultRPCProviderFactory providerFactory = new DefaultRPCProviderFactory().init(RemotingType.NETTY)
-                .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>(), false)
-                .addService(TestService.class.getName(),null, new TestServiceImpl<String>(), false);
+                .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>(), ServiceCtl.NON_BLOCKING)
+                .addService(TestService.class.getName(),null, new TestServiceImpl<String>(), ServiceCtl.NON_BLOCKING);
         providerFactory.start();
         try{
             TimeUnit.MINUTES.sleep(1);

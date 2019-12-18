@@ -7,7 +7,8 @@ A concise RPC framework based on Netty Transport with Zookeeper/Redis as the reg
 ## Features  
 
 - Exploit Netty(TCP/HTTP/HTTP2) in the remoting module  
-- Use [mini0q](https://github.com/chorifa/mini0q)(a disruptor-like Producer-Consumer model) to substitue JDK ExecutorService for blocking service or invoke callback method  
+- Use [mini0q](https://github.com/chorifa/mini0q)(a disruptor-like Producer-Consumer model) to substitue JDK ExecutorService for blocking service or invoke-callback method  
+- Add simple EventBus support and provide the basic PubSub function, based on which, method calls can be binded to a fixed EventLoop(which means thread-safe)  
 - Apply zookeeper/or/redis as different registries  
 - Implement various load-balance strategies: random, round, consistentHash, LFU, LRU, LeastUnreplied, etc.  
 - Provide different invoke-method: sync, future, call-back  
@@ -59,16 +60,20 @@ For provider, can provide service like this:
 
 ``` java
 DefaultRPCProviderFactory providerFactory1 = new DefaultRPCProviderFactory().init(RemotingType.NETTY, 8081)
-        .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>())
-        .addService(TestService.class.getName(),null, new TestServiceImpl<String>());
+        // NON_BLOCKING means such method will not block EventLoop
+        .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>(), ServiceCtl.NON_BLOCKING)
+        // BIND means such method will bind to fix EventLoop, Hence, it is thread-safe
+        // Note that, if BIND is used, such method should not block
+        .addService(TestService.class.getName(),null, new TestServiceImpl<String>(), ServiceCtl.BIND);
 
 DefaultRPCProviderFactory providerFactory2 = new DefaultRPCProviderFactory().init(RemotingType.NETTY_HTTP, 8082)
-        .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>(), true)
-        .addService(TestService.class.getName(),null, new TestServiceImpl<String>(), true); // true means such service will block EventLoop
+        // BLOCKING means such method will block EventLoop
+        .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>(), ServiceCtl.BLOCKING)
+        .addService(TestService.class.getName(),null, new TestServiceImpl<String>());
 
 DefaultRPCProviderFactory providerFactory3 = new DefaultRPCProviderFactory().init(RemotingType.NETTY_HTTP2, 8083)
-        .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>(), false)
-        .addService(TestService.class.getName(),null, new TestServiceImpl<String>(), false); // false means such service will not block
+        .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>(), ServiceCtl.NON_BLOCKING)
+        .addService(TestService.class.getName(),null, new TestServiceImpl<String>());
 
 providerFactory1.start();
 providerFactory2.start();
