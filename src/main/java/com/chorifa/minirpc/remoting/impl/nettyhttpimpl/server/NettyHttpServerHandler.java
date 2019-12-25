@@ -1,6 +1,5 @@
 package com.chorifa.minirpc.remoting.impl.nettyhttpimpl.server;
 
-import com.chorifa.minirpc.threads.EventBus;
 import com.chorifa.minirpc.threads.ThreadManager;
 import com.chorifa.minirpc.utils.serialize.SerialType;
 import com.chorifa.minirpc.utils.serialize.Serializer;
@@ -54,7 +53,7 @@ public class NettyHttpServerHandler extends SimpleChannelInboundHandler<FullHttp
             if(!providerFactory.getEventBus().publish(key, task)) {
                 if(providerFactory.isBlocking(key) || remotingRequest.isBlocking()) {
                     if(!ThreadManager.tryPublishEvent(channelHandlerContext.channel().eventLoop(), task))
-                        throw new RPCException("Service Provider busy (cannot publish new task)");
+                        throw new RPCException("Service Provider busy (RingQueue is full, cannot publish new task)");
                 }else task.run();
             }
 //            if(providerFactory.isBlocking(remotingRequest.getInterfaceName(), remotingRequest.getVersion())
@@ -72,7 +71,7 @@ public class NettyHttpServerHandler extends SimpleChannelInboundHandler<FullHttp
 //                channelHandlerContext.writeAndFlush(httpResponse);
 //            }
         }catch (Throwable e){
-            logger.error("Netty Http Server encounter one error when handling the request...");
+            logger.error("Netty Http Server encounter one error when handling the request...", e);
             RemotingResponse response = new RemotingResponse();
             response.setRequestId(remotingRequest.getRequestId());
             response.setErrorMsg(e.getMessage());

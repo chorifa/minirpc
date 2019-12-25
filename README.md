@@ -1,4 +1,4 @@
-# MiniRPC: a concise rpc implement with multi-basic functions  
+# MiniRPC: a concise rpc implement with multi functions  
 
 A concise RPC framework based on Netty Transport with Zookeeper/Redis as the registry.
 
@@ -7,8 +7,8 @@ A concise RPC framework based on Netty Transport with Zookeeper/Redis as the reg
 ## Features  
 
 - Exploit Netty(TCP/HTTP/HTTP2) in the remoting module  
-- Use [mini0q](https://github.com/chorifa/mini0q)(a disruptor-like Producer-Consumer model) to substitue JDK ExecutorService for blocking service or invoke-callback method  
-- Add simple EventBus support and provide the basic PubSub function, based on which, method calls can be binded to a fixed EventLoop(which means thread-safe)  
+- Use [mini0q](https://github.com/chorifa/mini0q)(a Disruptor-like Producer-Consumer model) to substitute JDK ExecutorService for blocking service or invoke-callback method  
+- Add simple EventBus support and provide the basic PubSub function, based on which, method calls can be bound to a fixed EventLoop(which means thread-safe)  
 - Apply zookeeper/or/redis as different registries  
 - Implement various load-balance strategies: random, round, consistentHash, LFU, LRU, LeastUnreplied, etc.  
 - Provide different invoke-method: sync, future, call-back  
@@ -26,7 +26,7 @@ Description: one producer(thread) along with one invoker(thread). Invoker contin
 
 ## Example
 
-If there is a TestService or HelloService like these:  
+If there is a TestService or HelloService like:  
 
 ``` java
 public interface TestService<T> {
@@ -38,7 +38,7 @@ public abstract class HelloSercice<T> {
 }
 ```
 
-And their implements like these:
+And their implements like:
 
 ``` java
 public class TestServiceImpl<T> implements TestService<T> {
@@ -56,24 +56,26 @@ public class HelloServiceImpl<T> extends HelloService<T> {
 }
 ```
 
-For provider, can provide service like this:
+Provider can provide service like:
 
 ``` java
+TestServiceImpl<String> DEFAULT_TEST_SERVICE = new TestServiceImpl<String>();
+
 DefaultRPCProviderFactory providerFactory1 = new DefaultRPCProviderFactory().init(RemotingType.NETTY, 8081)
         // NON_BLOCKING means such method will not block EventLoop
         .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>(), ServiceCtl.NON_BLOCKING)
         // BIND means such method will bind to fix EventLoop, Hence, it is thread-safe
         // Note that, if BIND is used, such method should not block
-        .addService(TestService.class.getName(),null, new TestServiceImpl<String>(), ServiceCtl.BIND);
+        .addService(TestService.class.getName(),null, DEFAULT_TEST_SERVICE, ServiceCtl.BIND);
 
 DefaultRPCProviderFactory providerFactory2 = new DefaultRPCProviderFactory().init(RemotingType.NETTY_HTTP, 8082)
         // BLOCKING means such method will block EventLoop
         .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>(), ServiceCtl.BLOCKING)
-        .addService(TestService.class.getName(),null, new TestServiceImpl<String>());
+        .addService(TestService.class.getName(),null, DEFAULT_TEST_SERVICE);
 
 DefaultRPCProviderFactory providerFactory3 = new DefaultRPCProviderFactory().init(RemotingType.NETTY_HTTP2, 8083)
         .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>(), ServiceCtl.NON_BLOCKING)
-        .addService(TestService.class.getName(),null, new TestServiceImpl<String>());
+        .addService(TestService.class.getName(),null, DEFAULT_TEST_SERVICE);
 
 providerFactory1.start();
 providerFactory2.start();
@@ -89,7 +91,7 @@ try{
 }
 ```
 
-For Invoker, can call service like this:
+Invoker can call service like:
 
 ``` java
 RPCReferenceManager manager1 = ReferenceManagerBuilder.init()

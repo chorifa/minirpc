@@ -6,6 +6,7 @@ import com.chorifa.minirpc.invoker.reference.ReferenceManagerBuilder;
 import com.chorifa.minirpc.invoker.type.RemotingFutureAdaptor;
 import com.chorifa.minirpc.invoker.type.SendType;
 import com.chorifa.minirpc.provider.DefaultRPCProviderFactory;
+import com.chorifa.minirpc.provider.ServiceCtl;
 import com.chorifa.minirpc.remoting.RemotingType;
 import com.chorifa.minirpc.utils.serialize.SerialType;
 import org.apache.dubbo.config.*;
@@ -20,9 +21,9 @@ import java.util.concurrent.TimeUnit;
 public class PerfTest {
 
     @Test
-    public void requestPerf4miniRPCProducer(){
+    public void requestPerf4miniRPCProducer() {
         DefaultRPCProviderFactory providerFactory = new DefaultRPCProviderFactory().init(RemotingType.NETTY)
-                .addService(PerfService.class.getName(),null, new PerfServiceImpl());
+                .addService(PerfService.class.getName(),null, new PerfServiceImpl(), ServiceCtl.BLOCKING);
         providerFactory.start();
         try{
             TimeUnit.MINUTES.sleep(1);
@@ -38,7 +39,7 @@ public class PerfTest {
      *                           time 16347ms
      */
     @Test
-    public void requestPerf4miniRPCInvokerSync(){
+    public void requestPerf4miniRPCInvokerSync() {
         RPCReferenceManager manager = ReferenceManagerBuilder.init()
                 .forService(PerfService.class).forAddress("localhost:8086").build();
         manager.getInvokerFactory().start();
@@ -72,7 +73,7 @@ public class PerfTest {
      *                           time 4460ms (4s)
      */
     @Test
-    public void requestPerf4miniRPCInvokerAsync(){
+    public void requestPerf4miniRPCInvokerAsync() {
         RPCReferenceManager manager = ReferenceManagerBuilder.init()
                 .applySendType(SendType.FUTURE)
                 .forService(PerfService.class).forAddress("localhost:8086").build();

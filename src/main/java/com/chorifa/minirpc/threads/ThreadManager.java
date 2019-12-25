@@ -28,7 +28,7 @@ public final class ThreadManager {
     }
 
     /* ------------------------------ Event, Factory and Handler for RingQueue ----------------------------------- */
-    private static final int DEFAULT_SIZE = 1000;
+    private static final int DEFAULT_SIZE = 10000;
     private static final int DEFAULT_CONSUMER = 4;
     private static final DefaultEventFactory EVENT_FACTORY = new DefaultEventFactory();
     private static final WaitStrategy DEFAULT_WAIT_STRATEGY = new LiteBlockingWaitStrategy(10_000_000_000L);

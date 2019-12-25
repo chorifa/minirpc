@@ -100,7 +100,7 @@ public class NettyHttp2ServerHandler extends ChannelDuplexHandler {
                 if(!providerFactory.getEventBus().publish(key, task)) { // fail
                     if(providerFactory.isBlocking(key) || remotingRequest.isBlocking()) {
                         if(!ThreadManager.tryPublishEvent(ctx.channel().eventLoop(), task))
-                            throw new RPCException("Service Provider busy (cannot publish new task)");
+                            throw new RPCException("Service Provider busy (RingQueue is full, cannot publish new task)");
                     }else task.run();
                 }
 //                if(providerFactory.isBlocking(remotingRequest.getInterfaceName(), remotingRequest.getVersion())

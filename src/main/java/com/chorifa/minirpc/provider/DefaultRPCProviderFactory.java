@@ -162,6 +162,11 @@ public class DefaultRPCProviderFactory {
         String key = generateKey(interfaceName, version);
         serviceMap.put(key, serviceEntity);
         switch (ctl) {
+            // NOTE: Even if key is bound to a fix EventLoop, when invoking the service,
+            // providerFactory.invokeService(request) is used,
+            // Hence, it should be promised that, Each service corresponded to key in all providerFactory
+            // should be the same, i.e. use Singleton when addService().
+            // TODO: or use static ConcurrentHashMap to maintain <key, service>, if ServiceCtl.BIND used
             case BIND: eventBus.subscribe(key, true); break;
             case BLOCKING: blockingServices.add(key); break;
         }

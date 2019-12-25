@@ -4,7 +4,6 @@ import com.chorifa.minirpc.provider.DefaultRPCProviderFactory;
 import com.chorifa.minirpc.remoting.entity.RemotingRequest;
 import com.chorifa.minirpc.remoting.entity.RemotingResponse;
 import com.chorifa.minirpc.remoting.impl.nettyimpl.codec.CodeCPair;
-import com.chorifa.minirpc.threads.EventBus;
 import com.chorifa.minirpc.threads.ThreadManager;
 import com.chorifa.minirpc.utils.RPCException;
 import io.netty.channel.ChannelHandlerContext;
@@ -40,7 +39,7 @@ class NettyServerHandler extends SimpleChannelInboundHandler<CodeCPair> {
             if(!providerFactory.getEventBus().publish(key, task)) { // service not bind to fix event-loop
                 if(providerFactory.isBlocking(key) || request.isBlocking()) {
                     if(!ThreadManager.tryPublishEvent(channelHandlerContext.channel().eventLoop(), task))
-                        throw new RPCException("Service Provider busy (cannot publish new task)");
+                        throw new RPCException("Service Provider busy (RingQueue is full, cannot publish new task)");
                 }else task.run();
             }
 //            if(providerFactory.isBlocking(request.getInterfaceName(), request.getVersion()) || request.isBlocking()) {
@@ -62,7 +61,7 @@ class NettyServerHandler extends SimpleChannelInboundHandler<CodeCPair> {
 //                channelHandlerContext.writeAndFlush(pair);
 //            }
         } catch (Throwable e) { // TO catch RuntimeException for publish may reject
-            logger.error("Netty server encounter one exception while handling one request...");
+            logger.error("Netty server encounter one exception while handling one request...", e);
             RemotingResponse response = new RemotingResponse();
             response.setRequestId(request.getRequestId());
             response.setErrorMsg(e.getMessage());
