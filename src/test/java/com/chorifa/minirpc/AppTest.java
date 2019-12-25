@@ -67,6 +67,40 @@ public class AppTest
     }
 
     @Test
+    public void testMultiProviderType() {
+        TestServiceImpl<String> DEFAULT_TEST_SERVICE = new TestServiceImpl<>();
+
+        DefaultRPCProviderFactory providerFactory1 = new DefaultRPCProviderFactory().init(RemotingType.NETTY, 8081)
+                // NON_BLOCKING means such method will not block EventLoop
+                .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>(), ServiceCtl.NON_BLOCKING)
+                // BIND means such method will bind to fix EventLoop, Hence, it is thread-safe
+                // Note that, if BIND is used, such method should not block
+                .addService(TestService.class.getName(),null, DEFAULT_TEST_SERVICE, ServiceCtl.BIND);
+
+        DefaultRPCProviderFactory providerFactory2 = new DefaultRPCProviderFactory().init(RemotingType.NETTY_HTTP, 8082)
+                // BLOCKING means such method will block EventLoop
+                .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>(), ServiceCtl.BLOCKING)
+                .addService(TestService.class.getName(),null, DEFAULT_TEST_SERVICE);
+
+        DefaultRPCProviderFactory providerFactory3 = new DefaultRPCProviderFactory().init(RemotingType.NETTY_HTTP2, 8083)
+                .addService(HelloService.class.getName(),null, new HelloServiceImpl<Integer>(), ServiceCtl.NON_BLOCKING)
+                .addService(TestService.class.getName(),null, DEFAULT_TEST_SERVICE);
+
+        providerFactory1.start();
+        providerFactory2.start();
+        providerFactory3.start();
+        try{
+            TimeUnit.MINUTES.sleep(1);
+        }catch (Exception e){
+            e.printStackTrace();
+        }finally {
+            providerFactory1.stop();
+            providerFactory2.stop();
+            providerFactory3.stop();
+        }
+    }
+
+    @Test
     public void testMultiInvoker() throws ExecutionException, InterruptedException {
         RPCReferenceManager manager1 = ReferenceManagerBuilder.init()
                 .applySerializer(SerialType.HESSIAN)

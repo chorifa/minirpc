@@ -157,7 +157,7 @@
       <artifactId>mini0q</artifactId>
       <version>1.0-SNAPSHOT</version>
       <scope>system</scope>
-      <systemPath>${project.basedir}/lib/mini0q-1.0-full.jar</systemPath>
+      <systemPath>${project.basedir}/lib/mini0q-1.0.1-full.jar</systemPath>
     </dependency>
   </dependencies>
 
